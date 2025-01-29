@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
-    name: {
+    productName: {
         type: String,
         required: true,
         trim: true
@@ -15,7 +15,7 @@ const productSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
-    categoryId: {
+    categoriesId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Category",
         required: true,
@@ -43,12 +43,12 @@ const productSchema = new mongoose.Schema({
         required: true,
         min: 0
     },
-    sizes: {
-        type: [Number], // Array of available sizes (e.g., [6, 7, 8, 9, 10])
+    size: {
+        type: String,
         required: true,
     },
     imageUrl: {
-        type: [String], // Array of image URLs
+        type: [String],
         required: true,
     }
 }, 

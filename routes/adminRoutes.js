@@ -4,6 +4,7 @@ import adminMiddleware from '../middlewares/adminMiddleware.js'
 import dashboardController from '../Controller/admin/dashboardController.js'
 import userController from '../Controller/admin/userController.js'
 import categoryController from '../Controller/admin/categoryController.js'
+import productController from '../Controller/admin/productController.js'
 const router = Router()
 
 
@@ -20,6 +21,11 @@ router.post('/category/edit',adminMiddleware.checkSession,categoryController.edi
 router.get('/category/toggle',adminMiddleware.checkSession,categoryController.toggleCategory)
 
 
+router.get('/product',adminMiddleware.checkSession,productController.renderProductPage)
+router.post('/product/add',adminMiddleware.checkSession,productController.addProduct)
+router.get('/product/:id',adminMiddleware.checkSession,productController.getProductDetails)
+router.post('/product/edit/:id',adminMiddleware.checkSession,productController.updateProduct)
+router.post('/product/toggle-status/:id',adminMiddleware.checkSession,productController.toggleProductStatus)
 
 export default router
 
