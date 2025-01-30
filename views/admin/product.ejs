@@ -536,19 +536,20 @@
                         }
                     }
                     
-                    // Handle image files
-                    const updatedImageIndexes = [];
+                    // Handle image updates
                     const imageInputs = document.querySelectorAll('.product-image');
+                    const updatedIndexes = [];
                     
                     imageInputs.forEach((input, index) => {
                         if (input.files && input.files[0]) {
                             processedFormData.append('images', input.files[0]);
-                            updatedImageIndexes.push(index);
+                            updatedIndexes.push(index);
                         }
                     });
                     
-                    if (updatedImageIndexes.length > 0) {
-                        processedFormData.append('imageIndexes', updatedImageIndexes.join(','));
+                    // Only add imageIndexes if there are actually updated images
+                    if (updatedIndexes.length > 0) {
+                        processedFormData.append('imageIndexes', updatedIndexes.join(','));
                     }
                 } else {
                     // New product mode
@@ -606,8 +607,7 @@
         });
 
         // Update the edit product handler
-        const editButtons = document.querySelectorAll('.edit-product');
-        editButtons.forEach(button => {
+        document.querySelectorAll('.edit-product').forEach(button => {
             button.addEventListener('click', async function() {
                 try {
                     const productId = this.getAttribute('data-id');
@@ -623,7 +623,7 @@
                     document.getElementById('modalTitle').textContent = 'Edit Product';
                     document.getElementById('productId').value = product._id;
                     
-                    // Populate basic fields
+                    // Set form fields
                     document.getElementById('productName').value = product.productName;
                     document.getElementById('brand').value = product.brand;
                     document.getElementById('categoriesId').value = product.categoriesId._id;
@@ -631,7 +631,7 @@
                     document.getElementById('price').value = product.price;
                     document.getElementById('stock').value = product.stock;
 
-                    // Handle sizes - check the appropriate checkboxes
+                    // Handle sizes
                     const sizes = Array.isArray(product.size) ? product.size : [product.size];
                     document.querySelectorAll('input[name="sizes"]').forEach(checkbox => {
                         checkbox.checked = sizes.includes(checkbox.value);
@@ -639,31 +639,21 @@
 
                     // Handle images
                     if (product.imageUrl && Array.isArray(product.imageUrl)) {
-                        const previews = document.querySelectorAll('.preview-content');
+                        const previews = document.querySelectorAll('.image-preview');
                         product.imageUrl.forEach((url, index) => {
                             if (previews[index]) {
                                 previews[index].innerHTML = `
-                                    <img src="${url}" class="w-full h-full object-cover rounded">
-                                    <div class="mt-2">
-                                        <p class="text-xs text-gray-500">Current image ${index + 1}</p>
-                                        <p class="text-xs text-gray-500">Click to change (optional)</p>
+                                    <div class="preview-content h-48 flex flex-col items-center justify-center">
+                                        <img src="${url}" class="w-full h-full object-cover rounded">
+                                        <p class="text-xs text-gray-500 mt-1">Click to change image</p>
                                     </div>
                                 `;
                             }
                         });
-                        
-                        // Make image inputs optional for editing
-                        document.querySelectorAll('.product-image').forEach(input => {
-                            input.removeAttribute('required');
-                        });
                     }
 
                     // Show modal
-                    const modal = document.getElementById('productModal');
-                    modal.classList.remove('hidden');
-                    setTimeout(() => {
-                        modal.classList.add('opacity-100');
-                    }, 20);
+                    document.getElementById('productModal').classList.remove('hidden');
 
                 } catch (error) {
                     console.error('Error fetching product:', error);
@@ -675,6 +665,31 @@
                     });
                 }
             });
+        });
+
+        // Add input validation for product name and brand
+        document.getElementById('productName').addEventListener('input', function() {
+            if (this.value.length > 10) {
+                this.value = this.value.substring(0, 10);
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Character Limit Reached',
+                    text: 'Product name cannot exceed 10 characters',
+                    confirmButtonColor: '#10B981'
+                });
+            }
+        });
+
+        document.getElementById('brand').addEventListener('input', function() {
+            if (this.value.length > 10) {
+                this.value = this.value.substring(0, 10);
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Character Limit Reached',
+                    text: 'Brand name cannot exceed 10 characters',
+                    confirmButtonColor: '#10B981'
+                });
+            }
         });
 
         // Delete Product Handler
@@ -943,45 +958,37 @@
             
             try {
                 const productId = document.getElementById('productId').value;
+                const formData = new FormData();
                 
-                // Size validation
-                const selectedSizes = Array.from(document.querySelectorAll('input[name="sizes"]:checked'))
-                    .map(checkbox => checkbox.value);
-                    
-                if (selectedSizes.length === 0) {
-                    await Swal.fire({
-                        icon: 'error',
-                        title: 'Size Required',
-                        text: 'Please select at least one size',
-                        confirmButtonColor: '#10B981'
-                    });
-                    return;
-                }
-
-                // Image validation only for new products
-                if (!productId) {
-                    const imageInputs = document.querySelectorAll('.product-image');
-                    let hasAllImages = true;
-                    imageInputs.forEach(input => {
-                        if (!input.files || !input.files[0]) {
-                            hasAllImages = false;
-                        }
-                    });
-                    if (!hasAllImages) {
-                        await Swal.fire({
-                            icon: 'error',
-                            title: 'Images Required',
-                            text: 'Please upload all 3 images',
-                            confirmButtonColor: '#10B981'
-                        });
-                        return;
+                // Add all non-file fields
+                const formFields = new FormData(this);
+                for (let [key, value] of formFields.entries()) {
+                    if (key !== 'images') {
+                        formData.append(key, value);
                     }
+                }
+                
+                // Handle image updates
+                const imageInputs = document.querySelectorAll('.product-image');
+                const updatedIndexes = [];
+                
+                imageInputs.forEach((input, index) => {
+                    if (input.files && input.files[0]) {
+                        console.log(`Adding image at index ${index}`);
+                        formData.append('images', input.files[0]);
+                        updatedIndexes.push(index);
+                    }
+                });
+                
+                if (updatedIndexes.length > 0) {
+                    console.log('Updated image indexes:', updatedIndexes);
+                    formData.append('imageIndexes', updatedIndexes.join(','));
                 }
 
                 // Show loading state
                 Swal.fire({
-                    title: 'Processing...',
-                    text: 'Please wait while we save the product',
+                    title: 'Saving Changes...',
+                    text: 'Please wait',
                     allowOutsideClick: false,
                     showConfirmButton: false,
                     didOpen: () => {
@@ -989,16 +996,18 @@
                     }
                 });
 
-                const formData = new FormData(this);
-                const url = productId ? `/admin/product/edit/${productId}` : '/admin/product/add';
+                // Log form data for debugging
+                for (let [key, value] of formData.entries()) {
+                    console.log(`${key}:`, value);
+                }
 
-                const response = await fetch(url, {
+                const response = await fetch(`/admin/product/edit/${productId}`, {
                     method: 'POST',
                     body: formData
                 });
 
                 const result = await response.json();
-
+                
                 if (response.ok) {
                     await Swal.fire({
                         icon: 'success',
@@ -1008,14 +1017,14 @@
                     });
                     window.location.reload();
                 } else {
-                    throw new Error(result.message || 'Error processing request');
+                    throw new Error(result.message || 'Error updating product');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 await Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: error.message || 'An error occurred while processing your request',
+                    text: error.message || 'An error occurred while updating the product',
                     confirmButtonColor: '#10B981'
                 });
             }

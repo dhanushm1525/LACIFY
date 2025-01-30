@@ -8,7 +8,7 @@ import upload from '../../utils/multer.js'
 const validateProductName = (name) => {
     // Remove extra spaces and check length
     const trimmedName = name.trim();
-    if (trimmedName.length < 3 || trimmedName.length > 50) {
+    if (trimmedName.length < 3 || trimmedName.length > 10) {
         throw new Error('Product name must be between 3 and 50 characters');
     }
     
@@ -24,7 +24,7 @@ const validateProductName = (name) => {
 const validateBrand = (brand) => {
     // Remove extra spaces and check length
     const trimmedBrand = brand.trim();
-    if (trimmedBrand.length < 2 || trimmedBrand.length > 30) {
+    if (trimmedBrand.length < 2 || trimmedBrand.length > 10) {
         throw new Error('Brand name must be between 2 and 30 characters');
     }
     
@@ -222,16 +222,13 @@ const updateProduct = async (req, res) => {
 
     uploadMultiple(req, res, async (err) => {
         if (err) {
+            console.error('Upload error:', err);
             return res.status(400).json({ message: err.message });
         }
 
         try {
-            const { productId, productName, brand, categoriesId, description, price, stock, imageIndexes } = req.body;
-
-            // Validate required fields
-            if (!productName || !brand || !categoriesId || !description || !price || !stock) {
-                return res.status(400).json({ message: 'All fields are required' });
-            }
+            const { productId, productName, brand, categoriesId, description, price, stock } = req.body;
+            const imageIndexes = req.body.imageIndexes ? req.body.imageIndexes.split(',').map(Number) : [];
 
             // Get existing product
             const existingProduct = await Product.findById(productId);
@@ -239,60 +236,58 @@ const updateProduct = async (req, res) => {
                 return res.status(404).json({ message: 'Product not found' });
             }
 
-            // Validate product name and brand
-            let validatedName, validatedBrand;
-            try {
-                validatedName = validateProductName(productName);
-                validatedBrand = validateBrand(brand);
-            } catch (validationError) {
-                return res.status(400).json({ message: validationError.message });
-            }
-
             // Handle image updates
-            let updatedImageUrls = [...existingProduct.imageUrl]; // Copy existing image URLs
+            let updatedImageUrls = [...existingProduct.imageUrl];
 
-            if (req.files && req.files.length > 0 && imageIndexes) {
-                const indexes = imageIndexes.split(',').map(Number);
-                
-                // Process each new image
-                req.files.forEach((file, i) => {
-                    const updateIndex = indexes[i];
-                    if (updateIndex >= 0 && updateIndex < 3) {
-                        // Delete old image if it exists
-                        const oldImagePath = path.join(process.cwd(), 'static', 'uploads', 'products', path.basename(existingProduct.imageUrl[updateIndex]));
-                        try {
-                            if (fs.existsSync(oldImagePath)) {
-                                fs.unlinkSync(oldImagePath);
+            if (req.files && req.files.length > 0) {
+                // Update each new image at its specified index
+                for (let i = 0; i < req.files.length; i++) {
+                    const index = imageIndexes[i];
+                    if (index >= 0 && index < 3) {
+                        // Get the old image path
+                        const oldImageUrl = existingProduct.imageUrl[index];
+                        if (oldImageUrl) {
+                            const oldImagePath = path.join(process.cwd(), 'static', oldImageUrl);
+                            console.log('Attempting to delete:', oldImagePath);
+                            
+                            try {
+                                if (fs.existsSync(oldImagePath)) {
+                                    fs.unlinkSync(oldImagePath);
+                                    console.log('Successfully deleted old image');
+                                }
+                            } catch (error) {
+                                console.error('Error deleting old image:', error);
                             }
-                        } catch (error) {
-                            console.error('Error deleting old image:', error);
                         }
-                        
+
                         // Update with new image
-                        updatedImageUrls[updateIndex] = `/uploads/products/${file.filename}`;
+                        updatedImageUrls[index] = `/uploads/products/${req.files[i].filename}`;
                     }
-                });
+                }
             }
 
-            // Update product fields
-            const updatedProduct = {
-                productName: validatedName,
-                brand: validatedBrand,
-                categoriesId,
-                description: description.trim(),
-                price: parseFloat(price),
-                stock: parseInt(stock),
-                size: Array.isArray(req.body.sizes) ? req.body.sizes : [req.body.sizes],
-                imageUrl: updatedImageUrls
-            };
+            // Update product
+            const updatedProduct = await Product.findByIdAndUpdate(
+                productId,
+                {
+                    productName,
+                    brand,
+                    categoriesId,
+                    description: description.trim(),
+                    price: parseFloat(price),
+                    stock: parseInt(stock),
+                    size: Array.isArray(req.body.sizes) ? req.body.sizes : [req.body.sizes],
+                    imageUrl: updatedImageUrls
+                },
+                { new: true }
+            );
 
-            // Update the product
-            await Product.findByIdAndUpdate(productId, updatedProduct, { new: true });
-            
             res.status(200).json({ message: 'Product updated successfully' });
 
         } catch (error) {
-            // Delete any newly uploaded files if there's an error
+            console.error('Error in updateProduct:', error);
+            
+            // Cleanup any uploaded files
             if (req.files) {
                 req.files.forEach(file => {
                     const filePath = path.join(process.cwd(), 'static', 'uploads', 'products', file.filename);
@@ -301,12 +296,11 @@ const updateProduct = async (req, res) => {
                             fs.unlinkSync(filePath);
                         }
                     } catch (err) {
-                        console.error('Error deleting file:', err);
+                        console.error('Error cleaning up file:', err);
                     }
                 });
             }
             
-            console.error('Error updating product:', error);
             res.status(500).json({ message: error.message || 'Error updating product' });
         }
     });
