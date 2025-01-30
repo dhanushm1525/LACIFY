@@ -90,7 +90,6 @@ const addProduct = async (req, res) => {
 
     uploadMultiple(req, res, async (err) => {
         if (err) {
-            console.log("vida");
             
             return res.status(400).json({ message: err.message });
         }
@@ -157,7 +156,7 @@ const addProduct = async (req, res) => {
                 description: description.trim(),
                 price: parseFloat(price),
                 stock: parseInt(stock),
-                size: size,
+                size: Array.isArray(req.body.sizes) ? req.body.sizes : [req.body.sizes],
                 imageUrl: imageUrls,
                 isActive: true
             });
@@ -194,17 +193,18 @@ const getProductDetails = async (req, res) => {
 
         // Convert to plain object and sanitize
         const sanitizedProduct = {
+            ...product.toObject(),
             _id: product._id.toString(),
-            productName: product.productName,
-            brand: product.brand,
+            productName: product.productName || '',
+            brand: product.brand || '',
             categoriesId: {
                 _id: product.categoriesId._id.toString(),
                 name: product.categoriesId.name
             },
-            description: product.description,
-            price: product.price,
-            stock: product.stock,
-            size:product.size,
+            description: product.description || '',
+            price: product.price || 0,
+            stock: product.stock || 0,
+            size: Array.isArray(product.size) ? product.size : [product.size],
             imageUrl: product.imageUrl || [],
             isActive: product.isActive
         };
@@ -226,50 +226,30 @@ const updateProduct = async (req, res) => {
         }
 
         try {
-            const productId = req.params.id;
-            const existingProduct = await Product.findById(productId);
-            
-            if (!existingProduct) {
-                return res.status(404).json({ message: 'Product not found' });
-            }
-
-            const {
-                productName,
-                brand,
-                categoriesId,
-                description,
-                price,
-                stock,
-                size,
-                imageIndexes
-            } = req.body;
+            const { productId, productName, brand, categoriesId, description, price, stock, imageIndexes } = req.body;
 
             // Validate required fields
-            if (!productName || !brand || !categoriesId || !price || !stock) {
-                return res.status(400).json({ message: 'All required fields must be filled' });
+            if (!productName || !brand || !categoriesId || !description || !price || !stock) {
+                return res.status(400).json({ message: 'All fields are required' });
+            }
+
+            // Get existing product
+            const existingProduct = await Product.findById(productId);
+            if (!existingProduct) {
+                return res.status(404).json({ message: 'Product not found' });
             }
 
             // Validate product name and brand
             let validatedName, validatedBrand;
             try {
-                validatedName = validateProductName(req.body.productName);
-                validatedBrand = validateBrand(req.body.brand);
+                validatedName = validateProductName(productName);
+                validatedBrand = validateBrand(brand);
             } catch (validationError) {
                 return res.status(400).json({ message: validationError.message });
             }
 
-            // Check for duplicate product name (excluding current product)
-            const existingProductName = await Product.findOne({
-                productName: validatedName,
-                _id: { $ne: req.params.id }
-            });
-            
-            if (existingProductName) {
-                return res.status(400).json({ message: 'A product with this name already exists' });
-            }
-
             // Handle image updates
-            let updatedImageUrls = [...existingProduct.imageUrl];
+            let updatedImageUrls = [...existingProduct.imageUrl]; // Copy existing image URLs
 
             if (req.files && req.files.length > 0 && imageIndexes) {
                 const indexes = imageIndexes.split(',').map(Number);
@@ -279,7 +259,7 @@ const updateProduct = async (req, res) => {
                     const updateIndex = indexes[i];
                     if (updateIndex >= 0 && updateIndex < 3) {
                         // Delete old image if it exists
-                        const oldImagePath = path.join(process.cwd(), 'public', existingProduct.imageUrl[updateIndex]);
+                        const oldImagePath = path.join(process.cwd(), 'static', 'uploads', 'products', path.basename(existingProduct.imageUrl[updateIndex]));
                         try {
                             if (fs.existsSync(oldImagePath)) {
                                 fs.unlinkSync(oldImagePath);
@@ -302,7 +282,7 @@ const updateProduct = async (req, res) => {
                 description: description.trim(),
                 price: parseFloat(price),
                 stock: parseInt(stock),
-                size: size,
+                size: Array.isArray(req.body.sizes) ? req.body.sizes : [req.body.sizes],
                 imageUrl: updatedImageUrls
             };
 
@@ -315,7 +295,7 @@ const updateProduct = async (req, res) => {
             // Delete any newly uploaded files if there's an error
             if (req.files) {
                 req.files.forEach(file => {
-                    const filePath = path.join(process.cwd(), 'public', 'uploads', 'products', file.filename);
+                    const filePath = path.join(process.cwd(), 'static', 'uploads', 'products', file.filename);
                     try {
                         if (fs.existsSync(filePath)) {
                             fs.unlinkSync(filePath);
@@ -327,12 +307,10 @@ const updateProduct = async (req, res) => {
             }
             
             console.error('Error updating product:', error);
-            res.status(500).json({ message: 'Error updating product: ' + error.message });
+            res.status(500).json({ message: error.message || 'Error updating product' });
         }
     });
 };
-
-
 
 // Toggle Product Status
 const toggleProductStatus = async (req, res) => {
@@ -355,6 +333,5 @@ const toggleProductStatus = async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 };
-
 
 export default { renderProductPage, addProduct, getProductDetails, updateProduct, toggleProductStatus }

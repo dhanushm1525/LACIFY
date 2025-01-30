@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shoe Store</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .hero-gradient {
+            background: linear-gradient(to bottom, #1a1a1a, #2a2a2a);
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full bg-black bg-opacity-90 text-white z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <a href="#" class="text-xl font-bold">LOGO</a>
+                </div>
+                
+                <!-- Mobile menu button -->
+                <button id="mobile-menu-button" class="md:hidden flex items-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex space-x-8">
+                    <a href="#" class="hover:text-gray-300">Home</a>
+                    <a href="#" class="hover:text-gray-300">Shop</a>
+                    <a href="#" class="hover:text-gray-300">About</a>
+                    <a href="#" class="hover:text-gray-300">Contact</a>
+                </div>
+
+                <!-- Cart and Search -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <a href="#" class="hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </a>
+                    <a href="#" class="hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden md:hidden pb-4">
+                <a href="#" class="block py-2">Home</a>
+                <a href="#" class="block py-2">Shop</a>
+                <a href="#" class="block py-2">About</a>
+                <a href="#" class="block py-2">Contact</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-gradient min-h-screen flex items-center pt-16">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div class="text-white space-y-6 md:w-1/2">
+                    <h1 class="text-4xl md:text-6xl font-bold">Nike Air Max</h1>
+                    <p class="text-lg">Experience ultimate comfort and style</p>
+                    <button class="bg-white text-black px-8 py-3 rounded-full hover:bg-gray-200 transition">
+                        Shop Now
+                    </button>
+                </div>
+                <div class="md:w-1/2 mt-8 md:mt-0">
+                    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot%202025-01-29%20195350-uQ0eV5MU5nmJ0TLD3Q1aQS15JBNCJN.png" alt="Featured Shoe" class="w-full transform hover:scale-105 transition duration-500">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Top Picks Section -->
+    <section class="py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Top Picks For You</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Product Card 1 -->
+                <div class="group">
+                    <div class="relative overflow-hidden">
+                        <img src="/placeholder.svg?height=300&width=300" alt="Shoe 1" class="w-full h-auto">
+                        <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <button class="bg-white text-black px-6 py-2 rounded-full">Quick View</button>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <h3 class="text-lg font-semibold">Nike Air Max</h3>
+                        <p class="text-gray-600">Rs. 19,999.00</p>
+                    </div>
+                </div>
+                <!-- Repeat for other products -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Banner -->
+    <section class="bg-gray-200 py-16">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center justify-between">
+                <div class="md:w-1/2">
+                    <img src="/placeholder.svg?height=400&width=400" alt="Nike Blazer" class="w-full">
+                </div>
+                <div class="md:w-1/2 mt-8 md:mt-0 md:pl-12">
+                    <h2 class="text-4xl font-bold mb-4">Nike Blazer</h2>
+                    <p class="text-lg mb-6">Classic style meets modern comfort</p>
+                    <button class="bg-black text-white px-8 py-3 rounded-full hover:bg-gray-800 transition">
+                        Shop Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Instagram Section -->
+    <section class="py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12">Our Instagram</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Instagram Images -->
+                <div class="aspect-square overflow-hidden">
+                    <img src="/placeholder.svg?height=300&width=300" alt="Instagram 1" class="w-full h-full object-cover hover:scale-110 transition duration-300">
+                </div>
+                <!-- Repeat for other images -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-black text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <!-- Exclusive -->
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Exclusive</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-gray-300">Subscribe</a></li>
+                        <li><a href="#" class="hover:text-gray-300">Get 10% off your first order</a></li>
+                    </ul>
+                </div>
+
+                <!-- Support -->
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Support</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-gray-300">Help Center</a></li>
+                        <li><a href="#" class="hover:text-gray-300">Returns</a></li>
+                    </ul>
+                </div>
+
+                <!-- Legal -->
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Legal</h3>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="hover:text-gray-300">Privacy Policy</a></li>
+                        <li><a href="#" class="hover:text-gray-300">Terms of Service</a></li>
+                    </ul>
+                </div>
+
+                <!-- Download App -->
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Download App</h3>
+                    <div class="flex space-x-4">
+                        <img src="/placeholder.svg?height=40&width=120" alt="App Store" class="h-10">
+                        <img src="/placeholder.svg?height=40&width=120" alt="Play Store" class="h-10">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile Menu Toggle
+        const mobileMenuButton = document.getElementById('mobile-menu-button');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuButton.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        // Scroll Header Background
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('bg-opacity-90');
+            } else {
+                nav.classList.remove('bg-opacity-90');
+            }
+        });
+
+        // Product Quick View
+        document.querySelectorAll('.group').forEach(product => {
+            product.addEventListener('mouseenter', () => {
+                const overlay = product.querySelector('.absolute');
+                overlay.classList.remove('opacity-0');
+            });
+
+            product.addEventListener('mouseleave', () => {
+                const overlay = product.querySelector('.absolute');
+                overlay.classList.add('opacity-0');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -44,8 +44,14 @@ const productSchema = new mongoose.Schema({
         min: 0
     },
     size: {
-        type: String,
+        type: [String],
         required: true,
+        validate: {
+            validator: function(sizes) {
+                return sizes && sizes.length > 0;
+            },
+            message: 'At least one size must be selected'
+        }
     },
     imageUrl: {
         type: [String],

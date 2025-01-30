@@ -8,7 +8,7 @@ import productController from '../Controller/admin/productController.js'
 const router = Router()
 
 
-router.get('/login',authController.getAdmin)
+router.get('/login',adminMiddleware.isLogin,authController.getAdmin)
 router.post('/login',authController.postAdmin)
 router.get('/dashboard',adminMiddleware.checkSession,dashboardController.getDashboard)
 router.get('/userList',adminMiddleware.checkSession,userController.getUserList)
@@ -26,6 +26,7 @@ router.post('/product/add',adminMiddleware.checkSession,productController.addPro
 router.get('/product/:id',adminMiddleware.checkSession,productController.getProductDetails)
 router.post('/product/edit/:id',adminMiddleware.checkSession,productController.updateProduct)
 router.post('/product/toggle-status/:id',adminMiddleware.checkSession,productController.toggleProductStatus)
+
 
 export default router
 

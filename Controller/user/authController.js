@@ -366,7 +366,11 @@ const postLogin = async (req,res)=>{
 };
 
 
-
+const getLogout = (req, res) => {
+    req.session.destroy(() => {
+        res.redirect('/login');
+    });
+}
 
 
 export default{
@@ -377,5 +381,6 @@ export default{
     postResendOtp,
     getGoogle,
     getGoogleCallback,
-    postLogin
+    postLogin,
+    getLogout
 }
