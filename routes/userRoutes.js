@@ -8,13 +8,13 @@ const router = Router()
 
 router.get('/login',userMiddlewares.isLogin,authController.loadLogin)
 router.get('/signup',userMiddlewares.isLogin,authController.getSignUp)
-router.get('/',shopnhomeController.getHome)
+router.get('/',userMiddleware.checkSession,shopnhomeController.getHome)
 router.post('/signup',authController.postSignUp)
 router.post('/validate-otp',authController.postOtp)
 router.post('/resend-otp',authController.postResendOtp)
 router.get('/auth/google',authController.getGoogle)
 router.get('/auth/google/callback',authController.getGoogleCallback)
-router.get('/home',shopnhomeController.getHome)
+router.get('/home',userMiddleware.checkSession,shopnhomeController.getHome)
 router.post('/login',authController.postLogin)
 router.get('/product/:id', userMiddleware.checkSession, viewProductController.getProductDetails);
 router.get('/logout', userMiddlewares.checkSession, authController.getLogout);
