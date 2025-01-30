@@ -198,6 +198,7 @@
               <!-- Add this after the Product Details section -->
               <div class="border-t border-gray-100 pt-6">
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Description</h3>
+                <%= product.description %> 
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Select Size</h3>
                 <div class="grid grid-cols-5 gap-2">
                     <% product.size.forEach(availableSize => { %>
