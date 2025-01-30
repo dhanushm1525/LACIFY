@@ -212,7 +212,7 @@
                      id="price" 
                      min="0"
                      max="100000"
-                     step="0.01"
+                     step=""
                      class="w-full bg-zinc-800 border border-gray-700 rounded px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none text-gray-200">
               <p class="text-xs text-gray-500 mt-1">Enter price between ₹0 and ₹100,000</p>
             </div>
@@ -501,7 +501,6 @@
         // Form submission handler for edit
         document.getElementById('productForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            
             try {
                 // Show loading state
                 Swal.fire({
@@ -953,42 +952,14 @@
             variantCharCount.textContent = this.value.length;
         });
 
-        // Update the form submission handler
-        productForm.addEventListener('submit', async function(e) {
+        // Replace the existing form submission validation with this updated version
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             try {
-                const productId = document.getElementById('productId').value;
-                const formData = new FormData();
-                
-                // Add all non-file fields
-                const formFields = new FormData(this);
-                for (let [key, value] of formFields.entries()) {
-                    if (key !== 'images') {
-                        formData.append(key, value);
-                    }
-                }
-                
-                // Handle image updates
-                const imageInputs = document.querySelectorAll('.product-image');
-                const updatedIndexes = [];
-                
-                imageInputs.forEach((input, index) => {
-                    if (input.files && input.files[0]) {
-                        console.log(`Adding image at index ${index}`);
-                        formData.append('images', input.files[0]);
-                        updatedIndexes.push(index);
-                    }
-                });
-                
-                if (updatedIndexes.length > 0) {
-                    console.log('Updated image indexes:', updatedIndexes);
-                    formData.append('imageIndexes', updatedIndexes.join(','));
-                }
-
                 // Show loading state
                 Swal.fire({
-                    title: 'Saving Changes...',
+                    title: 'Processing...',
                     text: 'Please wait',
                     allowOutsideClick: false,
                     showConfirmButton: false,
@@ -997,18 +968,49 @@
                     }
                 });
 
-                // Log form data for debugging
-                for (let [key, value] of formData.entries()) {
-                    console.log(`${key}:`, value);
+                const formData = new FormData(this);
+                const productId = document.getElementById('productId').value;
+                const isEditMode = !!productId;
+
+                // Validate required fields
+                const requiredFields = ['productName', 'brand', 'categoriesId', 'description', 'price', 'stock'];
+                for (const field of requiredFields) {
+                    const value = formData.get(field);
+                    if (!value || value.trim() === '') {
+                        throw new Error(`${field.charAt(0).toUpperCase() + field.slice(1)} is required`);
+                    }
                 }
 
-                const response = await fetch(`/admin/product/edit/${productId}`, {
+                // Validate sizes
+                const selectedSizes = document.querySelectorAll('input[name="sizes"]:checked');
+                if (selectedSizes.length === 0) {
+                    throw new Error('Please select at least one size');
+                }
+
+                // Image validation only for new products
+                if (!isEditMode) {
+                    const imageInputs = document.querySelectorAll('.product-image');
+                    let hasAllImages = true;
+                    imageInputs.forEach(input => {
+                        if (!input.files || !input.files[0]) {
+                            hasAllImages = false;
+                        }
+                    });
+                    
+                    if (!hasAllImages) {
+                        throw new Error('Please upload all 3 images for new products');
+                    }
+                }
+
+                // Send request to appropriate endpoint
+                const url = isEditMode ? `/admin/product/edit/${productId}` : '/admin/product/add';
+                const response = await fetch(url, {
                     method: 'POST',
                     body: formData
                 });
 
                 const result = await response.json();
-                
+
                 if (response.ok) {
                     await Swal.fire({
                         icon: 'success',
@@ -1018,14 +1020,15 @@
                     });
                     window.location.reload();
                 } else {
-                    throw new Error(result.message || 'Error updating product');
+                    throw new Error(result.message || 'Error processing request');
                 }
+
             } catch (error) {
                 console.error('Error:', error);
                 await Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: error.message || 'An error occurred while updating the product',
+                    text: error.message || 'An error occurred while processing your request',
                     confirmButtonColor: '#10B981'
                 });
             }

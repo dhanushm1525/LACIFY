@@ -86,11 +86,12 @@ const renderProductPage = async (req, res) => {
 
 // Add New Product
 const addProduct = async (req, res) => {
+
+    console.log('hi')    
     const uploadMultiple = upload.array('images', 3);
 
     uploadMultiple(req, res, async (err) => {
         if (err) {
-            
             return res.status(400).json({ message: err.message });
         }
 
@@ -236,42 +237,55 @@ const updateProduct = async (req, res) => {
                 return res.status(404).json({ message: 'Product not found' });
             }
 
-            // Handle image updates
-            let updatedImageUrls = [...existingProduct.imageUrl];
+            // Validate required fields
+            if (!productName || !brand || !categoriesId || !description || !price || !stock) {
+                return res.status(400).json({ message: 'All fields are required except images' });
+            }
 
+            // Handle image updates - only process if new images were uploaded
+            let updatedImageUrls = [...existingProduct.imageUrl];
+            
             if (req.files && req.files.length > 0) {
-                // Update each new image at its specified index
+                // Validate file types and sizes for new uploads
+                for (const file of req.files) {
+                    if (file.size > 5 * 1024 * 1024) {
+                        return res.status(400).json({ message: 'Each image must be less than 5MB' });
+                    }
+
+                    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+                    if (!validTypes.includes(file.mimetype)) {
+                        return res.status(400).json({ message: 'Invalid file type. Only JPG, JPEG, PNG, and WebP are allowed' });
+                    }
+                }
+
+                // Update images at specified indexes
                 for (let i = 0; i < req.files.length; i++) {
                     const index = imageIndexes[i];
                     if (index >= 0 && index < 3) {
-                        // Get the old image path
+                        // Delete old image if it exists
                         const oldImageUrl = existingProduct.imageUrl[index];
                         if (oldImageUrl) {
-                            const oldImagePath = path.join(process.cwd(), 'static', oldImageUrl);
-                            console.log('Attempting to delete:', oldImagePath);
-                            
+                            const oldImagePath = path.join(process.cwd(), 'public', oldImageUrl);
                             try {
                                 if (fs.existsSync(oldImagePath)) {
                                     fs.unlinkSync(oldImagePath);
-                                    console.log('Successfully deleted old image');
                                 }
                             } catch (error) {
                                 console.error('Error deleting old image:', error);
                             }
                         }
-
                         // Update with new image
                         updatedImageUrls[index] = `/uploads/products/${req.files[i].filename}`;
                     }
                 }
             }
 
-            // Update product
+            // Update product with validated data
             const updatedProduct = await Product.findByIdAndUpdate(
                 productId,
                 {
-                    productName,
-                    brand,
+                    productName: productName.trim(),
+                    brand: brand.trim(),
                     categoriesId,
                     description: description.trim(),
                     price: parseFloat(price),
