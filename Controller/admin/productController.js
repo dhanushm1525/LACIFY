@@ -223,64 +223,43 @@ const updateProduct = async (req, res) => {
 
     uploadMultiple(req, res, async (err) => {
         if (err) {
-            console.error('Upload error:', err);
             return res.status(400).json({ message: err.message });
         }
 
         try {
             const { productId, productName, brand, categoriesId, description, price, stock } = req.body;
-            const imageIndexes = req.body.imageIndexes ? req.body.imageIndexes.split(',').map(Number) : [];
-
+            
             // Get existing product
             const existingProduct = await Product.findById(productId);
             if (!existingProduct) {
                 return res.status(404).json({ message: 'Product not found' });
             }
 
-            // Validate required fields
-            if (!productName || !brand || !categoriesId || !description || !price || !stock) {
-                return res.status(400).json({ message: 'All fields are required except images' });
-            }
-
-            // Handle image updates - only process if new images were uploaded
-            let updatedImageUrls = [...existingProduct.imageUrl];
+            // Handle image updates
+            let updatedImageUrls = [...existingProduct.imageUrl]; // Copy existing image URLs
             
             if (req.files && req.files.length > 0) {
-                // Validate file types and sizes for new uploads
-                for (const file of req.files) {
-                    if (file.size > 5 * 1024 * 1024) {
-                        return res.status(400).json({ message: 'Each image must be less than 5MB' });
-                    }
-
-                    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-                    if (!validTypes.includes(file.mimetype)) {
-                        return res.status(400).json({ message: 'Invalid file type. Only JPG, JPEG, PNG, and WebP are allowed' });
-                    }
-                }
-
-                // Update images at specified indexes
-                for (let i = 0; i < req.files.length; i++) {
-                    const index = imageIndexes[i];
-                    if (index >= 0 && index < 3) {
-                        // Delete old image if it exists
-                        const oldImageUrl = existingProduct.imageUrl[index];
-                        if (oldImageUrl) {
-                            const oldImagePath = path.join(process.cwd(), 'public', oldImageUrl);
-                            try {
-                                if (fs.existsSync(oldImagePath)) {
-                                    fs.unlinkSync(oldImagePath);
-                                }
-                            } catch (error) {
-                                console.error('Error deleting old image:', error);
+                // For each new image uploaded
+                req.files.forEach((file, index) => {
+                    // Replace the image URL at the corresponding index
+                    updatedImageUrls[index] = `/uploads/products/${file.filename}`;
+                    
+                    // Delete the old image file
+                    const oldImageUrl = existingProduct.imageUrl[index];
+                    if (oldImageUrl) {
+                        const oldImagePath = path.join(process.cwd(), 'public', oldImageUrl);
+                        try {
+                            if (fs.existsSync(oldImagePath)) {
+                                fs.unlinkSync(oldImagePath);
                             }
+                        } catch (error) {
+                            console.error('Error deleting old image:', error);
                         }
-                        // Update with new image
-                        updatedImageUrls[index] = `/uploads/products/${req.files[i].filename}`;
                     }
-                }
+                });
             }
 
-            // Update product with validated data
+            // Update product in database
             const updatedProduct = await Product.findByIdAndUpdate(
                 productId,
                 {
@@ -299,18 +278,12 @@ const updateProduct = async (req, res) => {
             res.status(200).json({ message: 'Product updated successfully' });
 
         } catch (error) {
-            console.error('Error in updateProduct:', error);
-            
-            // Cleanup any uploaded files
+            // Clean up any uploaded files if there's an error
             if (req.files) {
                 req.files.forEach(file => {
-                    const filePath = path.join(process.cwd(), 'static', 'uploads', 'products', file.filename);
-                    try {
-                        if (fs.existsSync(filePath)) {
-                            fs.unlinkSync(filePath);
-                        }
-                    } catch (err) {
-                        console.error('Error cleaning up file:', err);
+                    const filePath = path.join(process.cwd(), 'public', 'uploads', 'products', file.filename);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
                     }
                 });
             }
