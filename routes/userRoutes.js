@@ -5,6 +5,7 @@ import userMiddlewares from '../middlewares/userMiddleware.js';
 import viewProductController from '../Controller/user/viewProductController.js';
 import userMiddleware from '../middlewares/userMiddleware.js';
 import profileController from '../Controller/user/profileController.js';
+import addressController from '../Controller/user/addressController.js';
 const router = Router()
 
 router.get('/login',userMiddlewares.isLogin,authController.loadLogin)
@@ -29,6 +30,8 @@ router.post('/forgot-password/verify-otp', authController.verifyForgotPasswordOT
 router.post('/forgot-password/reset-password', authController.resetPassword);
 router.get('/change-password', userMiddlewares.checkSession, authController.getChangePassword);
 router.post('/change-password', userMiddlewares.checkSession, authController.postChangePassword);
-
-
+router.get('/address',userMiddleware.checkSession,addressController.getAddress)
+router.post('/address/add',userMiddleware.checkSession,addressController.addAddress)
+router.delete('/address/:id', userMiddlewares.checkSession, addressController.deleteAddress);
+router.put('/address/:id', userMiddlewares.checkSession, addressController.editAddress);
 export default router;
