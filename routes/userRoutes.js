@@ -6,11 +6,12 @@ import viewProductController from '../Controller/user/viewProductController.js';
 import userMiddleware from '../middlewares/userMiddleware.js';
 import profileController from '../Controller/user/profileController.js';
 import addressController from '../Controller/user/addressController.js';
+import userCartController from '../Controller/user/cartController.js';
 const router = Router()
 
 router.get('/login',userMiddlewares.isLogin,authController.loadLogin)
 router.get('/signup',userMiddlewares.isLogin,authController.getSignUp)
-router.get('/',userMiddleware.checkSession,shopnhomeController.getHome)
+router.get('/',shopnhomeController.getHome)
 router.post('/signup',authController.postSignUp)
 router.post('/validate-otp',authController.postOtp)
 router.post('/resend-otp',authController.postResendOtp)
@@ -34,4 +35,8 @@ router.get('/address',userMiddleware.checkSession,addressController.getAddress)
 router.post('/address/add',userMiddleware.checkSession,addressController.addAddress)
 router.delete('/address/:id', userMiddlewares.checkSession, addressController.deleteAddress);
 router.put('/address/:id', userMiddlewares.checkSession, addressController.editAddress);
+router.get('/cart', userMiddlewares.checkSession, userCartController.getCart);
+router.post('/cart/add', userMiddlewares.checkSession, userCartController.addToCart);
+router.patch('/cart/update-quantity', userMiddlewares.checkSession, userCartController.updateQuantity);
+router.delete('/cart/remove/:productId', userMiddlewares.checkSession, userCartController.removeFromCart);
 export default router;
