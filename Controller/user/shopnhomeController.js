@@ -37,19 +37,26 @@ const getHome = async (req, res) => {
 const getShop = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
-        const limit = 12; // Products per page
+        const limit = 12;
         const search = req.query.search || '';
         const sort = req.query.sort || 'default';
-        
-        // Get active categories first
+        const size = req.query.size || '';
+        const minPrice = req.query.minPrice ? Number(req.query.minPrice) : '';
+        const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : '';
+        const stock = req.query.stock || '';
+
+     
+
+        // Get active categories
         const activeCategories = await Category.find({ isActive: true }).distinct('_id');
 
-        // Build query with active categories
+        // Build base query
         let query = { 
             isActive: true,
-            categoriesId: { $in: activeCategories } // Only include products from active categories
+            categoriesId: { $in: activeCategories }
         };
 
+        // Add search filter
         if (search) {
             query.$or = [
                 { productName: { $regex: search, $options: 'i' } },
@@ -57,46 +64,56 @@ const getShop = async (req, res) => {
             ];
         }
 
+        // Add size filter
+        if (size) {
+            query.size = { $in: [size] };
+           
+        }
+
+        // Add price range filter
+        if (minPrice || maxPrice) {
+            query.price = {};
+            if (minPrice) query.price.$gte = Number(minPrice);
+            if (maxPrice) query.price.$lte = Number(maxPrice);
+        }
+
+        // Add stock filter
+        if (stock === 'inStock') {
+            query.stock = { $gt: 0 };
+        } else if (stock === 'outOfStock') {
+            query.stock = 0;
+        }
+
+       
+
         // Build sort options
         let sortOptions = {};
         switch (sort) {
-            case 'price-low':
+            case 'priceLowToHigh':
                 sortOptions.price = 1;
                 break;
-            case 'price-high':
+            case 'priceHighToLow':
                 sortOptions.price = -1;
                 break;
-            case 'newest':
+            case 'newArrivals':
                 sortOptions.createdAt = -1;
-                break;
-            case 'name-asc':
-                sortOptions.productName = 1;
-                break;
-            case 'name-desc':
-                sortOptions.productName = -1;
                 break;
             default:
                 sortOptions.createdAt = -1;
         }
 
-        // Get total count for pagination
+        // Get total count
         const totalProducts = await Product.countDocuments(query);
         const totalPages = Math.ceil(totalProducts / limit);
 
-        // Get products with populated category
+        // Fetch products
         const products = await Product.find(query)
             .sort(sortOptions)
             .skip((page - 1) * limit)
-            .limit(limit)
-            .populate({
-                path: 'categoriesId',
-                match: { isActive: true } // Double-check category is active
-            });
+            .limit(limit);
 
-        // Filter out any products where category wasn't populated (extra safety)
-        const filteredProducts = products.filter(product => product.categoriesId);
+       
 
-        // Add pagination info
         const pagination = {
             currentPage: page,
             totalPages,
@@ -104,19 +121,28 @@ const getShop = async (req, res) => {
             hasPrevPage: page > 1
         };
 
+        // Handle AJAX requests
+        if (req.xhr) {
+            return res.json({
+                products,
+                pagination
+            });
+        }
+
+        // Regular page load
         res.render('user/shop', {
-            products: filteredProducts,
-            currentPage: page,
-            totalPages,
+            products,
+            pagination,
             search,
-            sort,
-            totalProducts: filteredProducts.length,
-            pagination
+            sort
         });
 
     } catch (error) {
         console.error('Shop page error:', error);
-        res.status(500).render('error', { 
+        if (req.xhr) {
+            return res.status(500).json({ error: 'Error loading products' });
+        }
+        res.status(500).render('error', {
             message: 'Error loading shop page',
             search: '',
             sort: 'default'

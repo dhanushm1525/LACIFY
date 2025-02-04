@@ -55,59 +55,41 @@
               class="sticky top-4 space-y-6 bg-white p-6 rounded-lg shadow-sm"
             >
               <!-- Sorting Section -->
-              <div class="flex flex-col sm:flex-row gap-4 mb-6">
-                <!-- Search -->
-                <div class="flex-1">
-                  <form id="searchForm" class="relative">
-                    <input 
-                      type="text" 
-                      name="search" 
-                      value="<%= locals.search || '' %>"
-                      placeholder="Search products..."
-                      class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                    >
-                    <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2">
-                      <i class="fas fa-search text-gray-400"></i>
-                    </button>
-                  </form>
-                </div>
-
-                <!-- Sort -->
-                <div class="w-full sm:w-48">
-                  <select 
-                    id="sortSelect"
-                    class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                  >
-                    <option value="default" <%= (locals.sort === 'default' ? 'selected' : '') %>>Default sorting</option>
-                    <option value="price-low" <%= (locals.sort === 'price-low' ? 'selected' : '') %>>Price: Low to High</option>
-                    <option value="price-high" <%= (locals.sort === 'price-high' ? 'selected' : '') %>>Price: High to Low</option>
-                    <option value="newest" <%= (locals.sort === 'newest' ? 'selected' : '') %>>Newest First</option>
-                    <option value="name-asc" <%= (locals.sort === 'name-asc' ? 'selected' : '') %>>Name: A to Z</option>
-                    <option value="name-desc" <%= (locals.sort === 'name-desc' ? 'selected' : '') %>>Name: Z to A</option>
-                  </select>
-                </div>
+              <div class="mb-6">
+                <label
+                  for="sortFilter"
+                  class="block text-gray-700 font-medium mb-2"
+                  >Sort By</label
+                >
+                <select
+                  id="sortFilter"
+                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-2 focus:border-gray-900"
+                >
+                  <option value="default">Default</option>
+                  <option value="priceLowToHigh">Price: Low to High</option>
+                  <option value="priceHighToLow">Price: High to Low</option>
+                  <option value="ratingHighToLow">Rating: High to Low</option>
+                  <option value="newArrivals">New Arrivals</option>
+                </select>
               </div>
 
               <!-- Filter Section -->
               <div class="space-y-4">
                
 
+
+
                 <div>
                   <label
                     for="size"
                     class="block text-gray-700 font-medium mb-2"
-                    >size</label
+                    >Size</label
                   >
                   <select
                     id="size"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-2 focus:border-gray-900"
                   >
-                    <option value>6</option>
-                    <option value>7</option>
-                    <option value>8</option>
-                    <option value>9</option>
-                    <option value>10</option>
-                    
+                    <option value="">All</option>
                   </select>
                 </div>
 
@@ -141,7 +123,7 @@
                     id="stockFilter"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-2 focus:border-gray-900"
                   >
-                    <option value>All Products</option>
+                    <option value="">All Products</option>
                     <option value="inStock">In Stock</option>
                     <option value="outOfStock">Out of Stock</option>
                   </select>
@@ -162,6 +144,25 @@
 
           <!-- Right Side - Product Grid -->
           <div class="md:w-3/4">
+            <!-- Search Bar -->
+            <div class="mb-6 flex-1">
+              <div class="flex items-center bg-grey ">
+                <input
+                
+                  type="text"
+                  id="searchInput"
+                  class="h-10 flex-grow px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:border-2 focus:border-gray-900"
+                  placeholder="Search products..."
+                />
+                <button
+                  id="searchButton"
+                  class="h-10 px-4 py-2 bg-zinc-800 text-white rounded-r-lg transform transition-transform duration-300 ease-in-out hover:bg-zinc-600 hover:scale-105 active:bg-zinc-700 active:scale-95"
+                >
+                  Search
+                </button>
+              </div>
+            </div>
+
             <div
               id="productGrid"
               class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-16"
@@ -232,9 +233,9 @@
       document.addEventListener('DOMContentLoaded', function() {
           // Cache DOM elements
           const productGrid = document.getElementById('productGrid');
-          const searchForm = document.getElementById('searchForm');
-          const sortSelect = document.getElementById('sortSelect');
-          
+          const searchInput = document.getElementById('searchInput');
+          const searchButton = document.getElementById('searchButton');
+          const sortFilter = document.getElementById('sortFilter');
           const sizeFilter = document.getElementById('size');
           const minPriceFilter = document.getElementById('minPrice');
           const maxPriceFilter = document.getElementById('maxPrice');
@@ -244,6 +245,8 @@
           const nextPageBtn = document.getElementById('nextPage');
           const currentPageSpan = document.getElementById('currentPage');
           const totalPagesSpan = document.getElementById('totalPages');
+         
+          
 
           // Store original products data
           let products = <%- JSON.stringify(products) %>;
@@ -294,7 +297,7 @@
                               ${product.productName}
                           </h2>
                           <div class="flex items-baseline gap-1 mt-1">
-                              <span class="text-base font-bold text-gray-900">₹${product.discountPrice}</span>
+                              <span class="text-base font-bold text-gray-900">₹${product.price}</span>
                               ${product.discountPrice < product.price ? `
                                   <span class="text-xs text-gray-500 line-through">₹${product.price}</span>
                               ` : ''}
@@ -304,34 +307,38 @@
               `).join('');
           }
 
-          // Populate color filter options
+          // Function to populate filter options
           function populateFilterOptions() {
-              // Get unique colors
-              const colors = [...new Set(originalProducts.map(p => p.color))].filter(Boolean).sort();
+
               
-              // Clear existing options except the first one (All)
-              while (colorFilter.options.length > 1) {
-                  colorFilter.remove(1);
+              // Get unique sizes
+              const sizes = [...new Set(originalProducts.flatMap(p => p.size))].filter(Boolean).sort();
+              
+              console.log('Available sizes:', sizes);
+              
+              // Clear existing options
+
+              while (sizeFilter.options.length > 1) {
+                  sizeFilter.remove(1);
               }
 
-              // Add color options
-              colors.forEach(color => {
-                  const option = new Option(
-                      color.charAt(0).toUpperCase() + color.slice(1).toLowerCase(), 
-                      color
-                  );
-                  colorFilter.add(option);
+            
+
+              // Add size options
+              sizes.forEach(size => {
+                  const option = new Option(size, size);
+                  sizeFilter.add(option);
               });
           }
 
           // Event listeners
-          searchForm.addEventListener('submit', function(e) {
-              e.preventDefault();
-              updateFilters();
+          searchButton.addEventListener('click', applyFilters);
+          searchInput.addEventListener('keyup', (e) => {
+              if (e.key === 'Enter') applyFilters();
           });
           
           // Add input event listeners for immediate filtering
-          [sortSelect, sizeFilter, stockFilter].forEach(filter => {
+          [sortFilter, sizeFilter, stockFilter].forEach(filter => {
               filter.addEventListener('change', applyFilters);
           });
 
@@ -346,8 +353,10 @@
 
           // Reset filters
           resetButton.addEventListener('click', async () => {
-              searchForm.reset();
-              sortSelect.value = 'default';
+              searchInput.value = '';
+              sortFilter.value = 'default';
+             
+              
               sizeFilter.value = '';
               minPriceFilter.value = '';
               maxPriceFilter.value = '';
@@ -362,11 +371,10 @@
           // Function to fetch products with pagination
           async function fetchProducts(page = 1) {
               try {
-                  // Build query string with all current filters
                   const queryParams = new URLSearchParams({
                       page,
-                      search: searchForm.querySelector('input[name="search"]').value,
-                      sort: sortSelect.value,
+                      search: searchInput.value,
+                      sort: sortFilter.value,
                       size: sizeFilter.value,
                       minPrice: minPriceFilter.value,
                       maxPrice: maxPriceFilter.value,
@@ -428,51 +436,6 @@
           // Initialize
           populateFilterOptions();
       });
-
-      // Handle search
-      const searchForm = document.getElementById('searchForm');
-      searchForm.addEventListener('submit', function(e) {
-          e.preventDefault();
-          updateFilters();
-      });
-
-      // Handle sort
-      const sortSelect = document.getElementById('sortSelect');
-      sortSelect.addEventListener('change', function() {
-          updateFilters();
-      });
-
-      // Update URL with filters
-      function updateFilters() {
-          const search = document.querySelector('input[name="search"]').value;
-          const sort = sortSelect.value;
-          const currentUrl = new URL(window.location.href);
-          
-          // Update search params
-          if (search) {
-              currentUrl.searchParams.set('search', search);
-          } else {
-              currentUrl.searchParams.delete('search');
-          }
-          
-          // Update sort params
-          if (sort !== 'default') {
-              currentUrl.searchParams.set('sort', sort);
-          } else {
-              currentUrl.searchParams.delete('sort');
-          }
-          
-          // Reset to page 1 when filters change
-          currentUrl.searchParams.set('page', '1');
-          
-          // Navigate to new URL
-          window.location.href = currentUrl.toString();
-      }
-
-      // Clear filters
-      function clearFilters() {
-          window.location.href = '/shop';
-      }
     </script>
   </body>
 </html>

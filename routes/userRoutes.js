@@ -7,6 +7,7 @@ import userMiddleware from '../middlewares/userMiddleware.js';
 import profileController from '../Controller/user/profileController.js';
 import addressController from '../Controller/user/addressController.js';
 import userCartController from '../Controller/user/cartController.js';
+
 const router = Router()
 
 router.get('/login',userMiddlewares.isLogin,authController.loadLogin)
@@ -39,4 +40,5 @@ router.get('/cart', userMiddlewares.checkSession, userCartController.getCart);
 router.post('/cart/add', userMiddlewares.checkSession, userCartController.addToCart);
 router.patch('/cart/update-quantity', userMiddlewares.checkSession, userCartController.updateQuantity);
 router.delete('/cart/remove/:productId', userMiddlewares.checkSession, userCartController.removeFromCart);
+
 export default router;
