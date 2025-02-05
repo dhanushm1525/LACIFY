@@ -7,6 +7,7 @@ import userMiddleware from '../middlewares/userMiddleware.js';
 import profileController from '../Controller/user/profileController.js';
 import addressController from '../Controller/user/addressController.js';
 import userCartController from '../Controller/user/cartController.js';
+import checkoutController from '../Controller/user/checkoutController.js';
 
 const router = Router()
 
@@ -40,5 +41,8 @@ router.get('/cart', userMiddlewares.checkSession, userCartController.getCart);
 router.post('/cart/add', userMiddlewares.checkSession, userCartController.addToCart);
 router.patch('/cart/update-quantity', userMiddlewares.checkSession, userCartController.updateQuantity);
 router.delete('/cart/remove/:productId', userMiddlewares.checkSession, userCartController.removeFromCart);
+router.get('/checkout', userMiddlewares.checkSession, checkoutController.getCheckoutPage);
+
+router.post('/checkout/place-order', userMiddlewares.checkSession, checkoutController.placeOrder);
 
 export default router;
