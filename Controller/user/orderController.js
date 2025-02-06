@@ -1,7 +1,7 @@
 import orderSchema  from "../../model/orderModel.js";
 import productSchema from "../../model/productModel.js";
 import userSchema from '../../model/userModel.js';
-import PDFDocument from 'pdfkit';
+
 
 
 
@@ -91,6 +91,10 @@ const cancelOrder = async (req,res)=>{
             date:new Date(),
             comment:`Item cancelled by user:${reason}`
         });
+
+        
+       
+        
 
         await order.save();
 
