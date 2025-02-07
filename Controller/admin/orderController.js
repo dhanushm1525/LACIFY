@@ -130,6 +130,7 @@ const updateItemStatus = async (req,res)=>{
             return res.status(404).json({ success: false, message: 'Item not found' });
         }
 
+        // Update item status
         item.order.status = status;
         item.order.statusHistory.push({
             status,
@@ -138,22 +139,34 @@ const updateItemStatus = async (req,res)=>{
         });
 
         if (status === 'cancelled') {
-           
             // Restore stock
             await productSchema.findByIdAndUpdate(
                 item.product._id,
                 { $inc: { stock: item.quantity } }
             );
-
-          
+            
+            // Check if all items in the order are cancelled
+            const allItemsCancelled = order.items.every(item => item.order.status === 'cancelled');
+            
+            // If all items are cancelled, update payment status to cancelled
+            if (allItemsCancelled) {
+                order.payment.paymentStatus = 'cancelled';
+            }
+        } else if (status === 'delivered' && order.payment.method === 'cod') {
+            // Check if all items are either delivered or cancelled
+            const allItemsCompleted = order.items.every(item => 
+                item.order.status === 'delivered' || item.order.status === 'cancelled'
+            );
+            
+            // Update payment status for COD orders when all items are delivered/cancelled
+            if (allItemsCompleted) {
+                order.payment.paymentStatus = 'completed';
+            }
         }
 
-         // Update payment status for COD orders when delivered
-         if (status === 'delivered' && order.payment.method === 'cod') {
-            order.payment.paymentStatus = 'completed';
-        }
-
-        
+        // Use markModified to ensure Mongoose detects nested updates
+        order.markModified('items');
+        order.markModified('payment');
 
         await order.save();
         res.json({ success: true, message: 'Item status updated successfully' });
