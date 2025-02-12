@@ -236,8 +236,10 @@
 
             <!-- Place Order Button -->
             <button
+              type="button"
               onclick="placeOrder()"
               class="w-full bg-black text-white py-3 rounded-xl font-medium hover:bg-gray-800 transition-all duration-300 mt-6"
+              id="placeOrderBtn"
             >
               Place Order
             </button>
@@ -684,142 +686,90 @@
           }
       }
 
-      async function placeOrder() {
-          try {
+      function placeOrder() {
+          
 
-              // Check if address is selected
-              const selectedAddress = document.querySelector('input[name="selectedAddress"]:checked');
-              if (!selectedAddress) {
-                  await showAlert('error', 'Please select a delivery address.');
-                  return;
-              }
-
-              // Check if payment method is selected
-              const selectedPayment = document.querySelector('input[name="paymentMethod"]:checked');
-              if (!selectedPayment) {
-                  await showAlert('error', 'Please select a payment method to proceed with your order.');
-                  return;
-              }
-
-              const paymentMethod = selectedPayment.value;
-              const finalAmount = parseFloat(document.getElementById('finalTotal').textContent);
-
-              // Validate COD payment method
-              if (paymentMethod === 'cod' && finalAmount > 1000000000) {
-                  await showAlert('error', 'Cash on Delivery is not available for orders above ₹1,000. Please choose a different payment method.');
-                  return;
-              }
-
-              let response;
-
-              if (paymentMethod === 'cod') {
-                  response = await fetch('/checkout/place-order', {
-                      method: 'POST',
-                      headers: {
-                          'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({
-                          addressId: selectedAddress.value,
-                          paymentMethod: 'cod',
-                          couponCode: document.getElementById('appliedCouponCode')?.textContent
-                      })
-                  });
-                  const data = await response.json();
-
-                  if (data.success) {
-                      await showAlert('success', `Order Placed Successfully! Order ID: ${data.orderId}`);
-                      window.location.href = `/orders?success=true&orderId=${data.orderId}`;
-                  } else {
-                      throw new Error(data.message);
-                  }
-              } else if (paymentMethod === 'online') {
-                  const data = await createRazorpayOrder(selectedAddress.value);
-                  if (!data.success) {
-                      throw new Error(data.message);
-                  }
-                  const options = {
-                      key: data.key,
-                      amount: data.order.amount,
-                      currency: "INR",
-                      name: "Onyx",
-                      description: "Order Payment",
-                      order_id: data.order.id,
-                      handler: async function (response) {
-                          try {
-                              const verifyResponse = await fetch('/checkout/verify-payment', {
-                                  method: 'POST',
-                                  headers: {
-                                      'Content-Type': 'application/json'
-                                  },
-                                  body: JSON.stringify({
-                                      razorpay_order_id: response.razorpay_order_id,
-                                      razorpay_payment_id: response.razorpay_payment_id,
-                                      razorpay_signature: response.razorpay_signature
-                                  })
-                              });
-
-                              const verifyData = await verifyResponse.json();
-                              if (verifyData.success) {
-                                  // Show success alert before redirecting
-                                  await showAlert('success', 'Order Placed Successfully!', `Order ID: ${verifyData.orderId}`);
-
-                                  // Redirect to orders page
-                                  window.location.href = `/orders?success=true&orderId=${verifyData.orderId}`;
-                              } else {
-                                  throw new Error(verifyData.message);
-                              }
-                          } catch (error) {
-                              await showAlert('error', 'Payment Failed', error.message);
-                          }
-                      },
-                      prefill: {
-                          name: "<%= user.firstName %> <%= user.lastName %>",
-                          email: "<%= user.email %>",
-                          contact: "<%= user.phone %>"
-                      },
-                      theme: {
-                          color: "#000000"
-                      },
-                      modal: {
-                          ondismiss: async function() {
-                              try {
-                                  await fetch('/checkout/payment-failed', {
-                                      method: 'POST',
-                                      headers: {
-                                          'Content-Type': 'application/json'
-                                      },
-                                      body: JSON.stringify({
-                                          error: { description: 'Payment cancelled by user' },
-                                          razorpay_order_id: options.order_id
-                                      })
-                                  });
-
-                                  // Show alert and handle redirect in the callback
-                                  showAlert('error', 'Payment cancelled. You can retry the payment from your orders page.')
-                                      .then(() => {
-                                          // Use a direct redirect without delay
-                                          window.location.href = '/orders';
-                                      });
-
-                              } catch (error) {
-                                  console.error('Error handling payment failure:', error);
-                                  showAlert('error', 'Payment failed. Please check your orders page.')
-                                      .then(() => {
-                                          window.location.href = '/orders';
-                                      });
-                              }
-                          }
-                      }
-                  };
-
-                  const rzp = new Razorpay(options);
-                  rzp.open();
-              }
-          } catch (error) {
-              console.error('Error in placeOrder:', error);
-              await showAlert('error', error.message || 'Error placing order');
+          // Check if address is selected
+          const selectedAddress = document.querySelector('input[name="selectedAddress"]:checked');
+          if (!selectedAddress) {
+              Swal.fire({
+                  icon: 'error',
+                  title: 'Address Required',
+                  text: 'Please select a delivery address'
+              });
+              return;
           }
+
+          // Check if payment method is selected
+          const selectedPayment = document.querySelector('input[name="paymentMethod"]:checked');
+          if (!selectedPayment) {
+              Swal.fire({
+                  icon: 'error',
+                  title: 'Payment Method Required',
+                  text: 'Please select a payment method'
+              });
+              return;
+          }
+
+          // Show loading state
+          Swal.fire({
+              title: 'Processing...',
+              text: 'Please wait while we process your order',
+              allowOutsideClick: false,
+              showConfirmButton: false,
+              didOpen: () => {
+                  Swal.showLoading();
+              }
+          });
+
+          // Make the API call
+          fetch('/checkout/place-order', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                  addressId: selectedAddress.value,
+                  paymentMethod: selectedPayment.value
+              })
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  Swal.fire({
+                      icon: 'success',
+                      title: 'Success!',
+                      text: 'Order placed successfully',
+                      confirmButtonText: 'View Order'
+                  }).then(() => {
+                      window.location.href = `/orders?success=true&orderId=${data.orderId}`;
+                  });
+              } else {
+                  throw new Error(data.message || 'Failed to place order');
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              Swal.fire({
+                  icon: 'error',
+                  title: 'Error!',
+                  text: error.message || 'Something went wrong'
+              });
+          });
       }
+
+      // Add event listener for payment method selection
+      document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+          radio.addEventListener('change', function() {
+              const codOption = document.getElementById('codOption');
+              const finalTotal = parseFloat(codOption.dataset.finalTotal || 0);
+              
+              if (this.value === 'cod' && finalTotal > 500000) {
+                  alert('Cash on Delivery is not available for orders above ₹5,00,000');
+                  this.checked = false;
+              }
+          });
+      });
 
       function showInputModal(amountNeeded) {
           const modal = document.getElementById('inputModal');
@@ -981,3 +931,4 @@
     </script>
   </body>
 </html>
+

@@ -7,6 +7,22 @@ import Category from '../../model/categoryModel.js'
 const getCart  = async (req,res)=>{
     try{
         const userId = req.session.user;
+        
+       
+        // Add error handling for stock issues
+        let errorMessage = null;
+        if (req.query.error === 'stock') {
+           
+            
+            if (req.session.stockError) {
+                errorMessage = req.session.stockError.map(error => 
+                    `${error.productName} has only ${error.available} units available (you requested ${error.requested})`
+                ).join('\n');
+               
+                // Clear the error after displaying
+                delete req.session.stockError;
+            }
+        }
 
         //Get active categoris
         const activeCategories = await Category.find({isActive:true}).distinct('_id');
@@ -107,7 +123,7 @@ const getCart  = async (req,res)=>{
         await cart.save();
 
         res.render('user/cart',{
-            cartItems:updatedItems,total:total
+            cartItems:updatedItems,total:total,errorMessage,user:req.session.user
         });
 
 
@@ -119,123 +135,95 @@ const getCart  = async (req,res)=>{
         res.status(500).render('user/cart',{
             cartItems:[],
             total:0,
-            error:'Failed to load cart'
+            error:'Failed to load cart',
+            user: req.session.user
         });
         
     }
 };
 
 
-const addToCart = async (req,res)=>{
-    try{
-        const{productId,quantity}=req.body;
+const addToCart = async (req, res) => {
+    try {
         const userId = req.session.user;
-
-        //check if product exists,is active, and has an active category
-        const product = await productSchema.findById(productId).populate({
-            path:'categoriesId',
-            match:{isActive:true}
-        });
-
-        if(!product || !product.isActive || !product.categoriesId){
-            return res.status(400).json({
-                success:false,
-                message:'Product is not available'
+       
+        
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Please login to add items to cart'
             });
         }
 
-        //Get active offers for the product and its category
-        const offers = await Offer.find({
-            status: 'active',
-            startDate: { $lte: new Date() },
-            endDate: { $gte: new Date() },
-            $or: [
-                { productIds: productId },
-                { categoryId: product.categoriesId._id }
-            ]
+        const { productId, quantity, size } = req.body;
+       
+        
+        // Validate size is provided
+        if (!size) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please select a size'
+            });
+        }
 
-        });
+        let cart = await cartSchema.findOne({ userId });
+        const product = await productSchema.findById(productId);
 
-
-        const productOffer = offers.find(offer=>
-            offer.productIds&&offer.productIds.some(id=>id.equals(product._id))
-        );
-
-        const categoryOffer = offers.find(offer => 
-            offer.categoryId && offer.categoryId.equals(product.categoriesId._id)
-        );
-
-        //calculate discounted price
-        const discountPrice = calculateFinalPrice(product,categoryOffer,productOffer);
-
-        //check if user already has a cart
-        let cart = await cartSchema.findOne({userId});
-
-        if(!cart){
-            //create a new cart 
+        if (!cart) {
             cart = new cartSchema({
                 userId,
                 items: [{
                     productId,
-                    quantity,
-                    price: discountPrice,
-                    subtotal: quantity * discountPrice
-                }],
-                total: quantity * discountPrice
+                    quantity: parseInt(quantity),
+                    price: product.price,
+                    size: size  // Make sure size is included
+                }]
             });
-        }else{
-            //check if the product aalready exist in the cart
+        } else {
+            //check if the product already exists in the cart with same size
             const existingItem = cart.items.find(item=>
-                item.productId.toString()===productId
+                item.productId.toString() === productId &&
+                item.size === size
             );
 
             if(existingItem){
                 //calculate new quantity
-                const newQuantity = existingItem.quantity+parseInt(quantity);
+                const newQuantity = existingItem.quantity + parseInt(quantity);
 
                 //check if new quantity exceeds limit
-                if(newQuantity>3){
+                if(newQuantity > 3){
                     return res.status(400).json({
-                        message:`Cannot add more items. Maximum limit is 3 (Current quantity: ${existingItem.quantity})`
-                    });
-                }
-
-                //check if new quantity exceeds stock
-                if(newQuantity>product.stock){
-                    return res.status(400).json({
-                        message:'Not enough stock available'
+                        message: `Cannot add more items. Maximum limit is 3 (Current quantity: ${existingItem.quantity})`
                     });
                 }
 
                 //update quantity and price
                 existingItem.quantity = newQuantity;
-                existingItem.price = discountPrice;
-                existingItem.subtotal = newQuantity * discountPrice;
-            }else{
-                //add new item if product product dosent exist in the cart
+                existingItem.price = product.price;
+                existingItem.subtotal = newQuantity * product.price;
+            } else {
+                //add new item if product doesn't exist in the cart
                 cart.items.push({
                     productId,
-                    quantity,
-                    price:discountPrice,
-                    subtotal:quantity*discountPrice
+                    quantity: parseInt(quantity),
+                    price: product.price,
+                    size: size,  // Make sure size is included
+                    subtotal: parseInt(quantity) * product.price
                 });
             }
-
-            //update cart total
-            cart.total = cart.items.reduce((sum,item)=>sum+item.subtotal,0);
         }
 
-        await cart.save();
+        const savedCart = await cart.save();
+       
+        
+        res.json({ success: true, message: 'Item added to cart' });
 
-        res.status(200).json({
-            message: 'Product added to cart successfully',
-            cartCount: cart.items.length,
-            total: cart.total
-        });
-    }catch(error){
-        console.error('Error adding to cart',error);
+    } catch (error) {
+        console.error('Error adding to cart:', error);
         res.status(500).json({
-            message:'Failed to add product to cart'
+            success: false,
+            message: 'Failed to add item to cart',
+            error: error.message
         });
     }
 };

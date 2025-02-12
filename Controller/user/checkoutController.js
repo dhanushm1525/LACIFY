@@ -6,15 +6,29 @@ import productSchema from '../../model/productModel.js';
 
 const getCheckoutPage = async (req,res)=>{
     try{
+       
+        
         //get users addresses
         const addresses = await addressSchema.find({
             userId:req.session.user
         });
 
         //get cart items with populated product details
-        const cart = await cartSchema.findOne({userId:req.session.user});
+        const cart = await cartSchema.findOne({userId:req.session.user})
+        .populate({
+            path: 'items.productId',
+            model: 'Product',
+            select: 'productName size price'
+        });
         
+        // console.log('Cart items:', cart.items.map(item => ({
+        //     productName: item.productId.productName,
+        //     size: item.size,  // Check if this exists
+        //     quantity: item.quantity
+        // })));
+
         if(!cart || !cart.items || cart.items.length === 0){
+           
             return res.redirect('/cart');
         }
 
@@ -26,14 +40,25 @@ const getCheckoutPage = async (req,res)=>{
             select:'productName imageUrl price stock'
         });
         
-        //check stock availability
-        const stockCheck= populatedCart.items.every(item=>
-            item.productId.stock>=item.quantity
-        );
+        
+        //check stock availability with detailed logging
+        const stockValidationResults = populatedCart.items.map(item => ({
+            productName: item.productId.productName,
+            requested: item.quantity,
+            available: item.productId.stock,
+            hasError: item.productId.stock < item.quantity
+        }));
 
-        if(!stockCheck){
+        const hasStockError = stockValidationResults.some(item => item.hasError);
+        
+        if(hasStockError){
+           
+            // Store the detailed error information in session
+            req.session.stockError = stockValidationResults.filter(item => item.hasError);
             return res.redirect('/cart?error=stock');
         }
+
+      
 
         //format cart items for the template 
         const cartItems = populatedCart.items.map(item=>({
@@ -68,17 +93,37 @@ const getCheckoutPage = async (req,res)=>{
 
 const placeOrder = async (req,res)=>{
     try{
+       
         const {addressId, paymentMethod } = req.body;
         const userId = req.session.user;
 
+       
+        // Validate inputs
+        if (!addressId || !paymentMethod) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields'
+            });
+        }
+
         //get cart and validate
         const cart = await cartSchema.findOne({userId})
-        .populate('items.productId');
+        .populate({
+            path: 'items.productId',
+            model: 'Product',
+            select: 'productName size price'
+        });
 
-        if(!cart||cart.items.length===0){
+        // console.log('Cart items:', cart.items.map(item => ({
+        //     productName: item.productId.productName,
+        //     size: item.size,  // Check if this exists
+        //     quantity: item.quantity
+        // })));
+
+        if(!cart || cart.items.length === 0){
             return res.status(400).json({
-                sucess:false,
-                message:'Cart is empty'                
+                success: false,
+                message: 'Cart is empty'                
             });
         }
 
@@ -99,7 +144,8 @@ const placeOrder = async (req,res)=>{
         const initialItems = cart.items.map(item=>({
             product:item.productId._id,
             quantity: item.quantity,
-            price:item.price
+            price:item.price,
+            size:item.size
 
         }));
 
@@ -164,8 +210,15 @@ const placeOrder = async (req,res)=>{
         //update product stock
         for(const item of orderItems){
             await productSchema.findOneAndUpdate(
-                item.product,
-                {$inc:{stock:-item.quantity}}
+                {
+                    _id: item.product,
+                    'size.size': item.size
+                },
+                {
+                    $inc: {
+                        'size.$.stock': -item.quantity
+                    }
+                }
             );
         }
 
@@ -185,7 +238,7 @@ const placeOrder = async (req,res)=>{
         console.error('Place order error:', error);
         res.status(500).json({
             success: false,
-            message: 'Error placing order'
+            message: error.message || 'Error placing order'
         });
     }
 }

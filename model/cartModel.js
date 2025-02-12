@@ -19,6 +19,10 @@ const cartSchema = new mongoose.Schema({
         price: {
             type: Number,
             required: true
+        },
+        size: {
+            type: String,
+            required: true  // Make size required for each item
         }
     }],
 }, { timestamps: true });

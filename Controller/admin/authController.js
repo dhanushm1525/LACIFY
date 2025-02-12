@@ -5,7 +5,7 @@ config()
 
 const getAdmin = (req,res)=>{
     res.render('admin/login')
-}
+} 
 
 const postAdmin = async (req, res) => {
     try {

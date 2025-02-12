@@ -1,6 +1,6 @@
 import {Router} from 'express'
 import authController from '../Controller/admin/authController.js'
-import adminMiddleware from '../middlewares/adminMiddleware.js'
+   import adminMiddleware from '../middlewares/adminMiddleware.js'
 import dashboardController from '../Controller/admin/dashboardController.js'
 import userController from '../Controller/admin/userController.js'
 import categoryController from '../Controller/admin/categoryController.js'

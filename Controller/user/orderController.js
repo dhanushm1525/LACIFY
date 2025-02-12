@@ -40,10 +40,12 @@ const getOrders = async (req,res)=>{
 };
 
 const cancelOrder = async (req,res)=>{
-    try{
+    try {
         const {orderId , productId} = req.params;
         const {reason } = req.body;
         const userId = req.session.user;
+
+       
 
         const order = await orderSchema.findOne({_id:orderId,userId})
         .populate('items.product');
@@ -55,7 +57,6 @@ const cancelOrder = async (req,res)=>{
             });
         }
 
-        //find the specific item
         const itemIndex = order.items.findIndex(item=>
             item.product._id.toString()===productId
         );
@@ -69,7 +70,6 @@ const cancelOrder = async (req,res)=>{
 
         const item = order.items[itemIndex];
 
-        //check if item can be cancelled
         if(!['pending','processing'].includes(item.order.status)){
             return res.status(400).json({
                 success:false,
@@ -77,12 +77,40 @@ const cancelOrder = async (req,res)=>{
             });
         }
 
+        // Get the product
+        const product = await productSchema.findById(productId);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: 'Product not found'
+            });
+        }
 
-        //update product stock
-        await productSchema.findByIdAndUpdate(
-            productId,
-            {$inc:{stock:item.quantity}}
-        );
+        // Get the size from the cart/order history
+        const orderSize = item.size || '6'; // Using the size that was in the cart
+        
+
+        // Find the specific size in the product's size array
+        const sizeIndex = product.size.findIndex(s => s.size === orderSize);
+        
+
+        if (sizeIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: 'Size not found in product'
+            });
+        }
+
+        // Calculate new stock for the specific size
+        const currentStock = product.size[sizeIndex].stock;
+        const quantityToAdd = Number(item.quantity);
+        const newStock = currentStock + quantityToAdd;
+
+       
+
+        // Update the stock for the specific size
+        product.size[sizeIndex].stock = newStock;
+        await product.save();
 
         //update item status
         item.order.status='cancelled';
@@ -92,14 +120,10 @@ const cancelOrder = async (req,res)=>{
             comment:`Item cancelled by user:${reason}`
         });
 
-        
-       
-        
-
         await order.save();
 
         res.json({
-            sucess:true,
+            success:true,
             message:'Item cancelled successfully'
         });
 

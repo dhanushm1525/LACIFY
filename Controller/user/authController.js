@@ -91,7 +91,8 @@ const postSignUp = async (req , res)=>{
             otpExpiresAt:Date.now() + 120000,
             otpAttempts:0
         });
-
+        
+        
         await newUser.save();
 
 
@@ -484,7 +485,7 @@ const resetPassword = async (req,res)=>{
                     message:'user not found'
                 });
             }
-            console.log(newPassword);
+        
             
 
             //validate new password

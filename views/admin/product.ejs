@@ -87,7 +87,9 @@
                       <td class="px-4 py-3 text-sm md:text-base text-gray-300 hidden md:table-cell"><%= product.brand %></td>
                       <td class="px-4 py-3 text-sm md:text-base text-gray-300 hidden lg:table-cell"><%= product.categoriesId.name %></td>
                       <td class="px-4 py-3 text-sm md:text-base text-gray-200">₹<%= product.price.toLocaleString() %></td>
-                      <td class="px-4 py-3 text-sm md:text-base text-gray-300 hidden sm:table-cell"><%= product.stock %></td>
+                      <td class="px-4 py-3 text-sm md:text-base text-gray-300 hidden sm:table-cell">
+                        <%= product.size.reduce((total, sizeObj) => total + sizeObj.stock, 0) %>
+                      </td>
                       <td class="px-4 py-3 text-sm md:text-base text-gray-300 hidden sm:table-cell"><%= product.isActive ? 'Active' : 'Inactive' %></td>
                       <td class="px-4 py-3">
                         <div class="flex flex-col sm:flex-row gap-2 justify-end">
@@ -164,45 +166,29 @@
             </div>
 
             <div>
-              <label class="block text-gray-400 mb-1">Available Sizes</label>
-              <div class="grid grid-cols-3 gap-2">
-                  <label class="flex items-center space-x-2">
+              <label class="block text-gray-400 mb-1">Sizes and Stock</label>
+              <div class="grid grid-cols-3 gap-4">
+                <% const availableSizes = ['6', '7', '8', '9', '10']; %>
+                <% availableSizes.forEach(size => { %>
+                  <div class="size-stock-container">
+                    <label class="flex items-center space-x-2 mb-2">
                       <input type="checkbox" 
-                             name="sizes" 
-                             value="6"
-                             class="form-checkbox text-green-500">
-                      <span class="text-gray-200">Size 6</span>
-                  </label>
-                  <label class="flex items-center space-x-2">
-                      <input type="checkbox" 
-                             name="sizes" 
-                             value="7"
-                             class="form-checkbox text-green-500">
-                      <span class="text-gray-200">Size 7</span>
-                  </label>
-                  <label class="flex items-center space-x-2">
-                      <input type="checkbox" 
-                             name="sizes" 
-                             value="8"
-                             class="form-checkbox text-green-500">
-                      <span class="text-gray-200">Size 8</span>
-                  </label>
-                  <label class="flex items-center space-x-2">
-                      <input type="checkbox" 
-                             name="sizes" 
-                             value="9"
-                             class="form-checkbox text-green-500">
-                      <span class="text-gray-200">Size 9</span>
-                  </label>
-                  <label class="flex items-center space-x-2">
-                      <input type="checkbox" 
-                             name="sizes" 
-                             value="10"
-                             class="form-checkbox text-green-500">
-                      <span class="text-gray-200">Size 10</span>
-                  </label>
+                             name="size-checkbox" 
+                             value="<%= size %>"
+                             class="size-checkbox form-checkbox text-green-500">
+                      <span class="text-gray-200">Size <%= size %></span>
+                    </label>
+                    <input type="number" 
+                           name="size-stock-<%= size %>" 
+                           class="size-stock w-full bg-zinc-800 border border-gray-700 rounded px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none text-gray-200"
+                           min="0"
+                           max="1000"
+                           disabled
+                           placeholder="Stock">
+                  </div>
+                <% }); %>
               </div>
-              <p class="text-xs text-gray-500 mt-1">Select available sizes</p>
+              <p class="text-xs text-gray-500 mt-1">Select sizes and enter stock for each</p>
             </div>
 
             <div>
@@ -215,17 +201,6 @@
                      
                      class="w-full bg-zinc-800 border border-gray-700 rounded px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none text-gray-200">
               <p class="text-xs text-gray-500 mt-1">Enter price between ₹0 and ₹100,000</p>
-            </div>
-
-            <div>
-              <label class="block text-gray-400 mb-1">Stock</label>
-              <input type="number" 
-                     name="stock" 
-                     id="stock"
-                     min="0"
-                     max="1000"
-                     class="w-full bg-zinc-800 border border-gray-700 rounded px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none text-gray-200">
-              <p class="text-xs text-gray-500 mt-1">Enter stock between 0 and 1000 units</p>
             </div>
 
             <div>
@@ -339,16 +314,25 @@
           // Clear image previews
           document.querySelectorAll('.image-preview').forEach(preview => {
             preview.innerHTML = `
-              <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
-              <p class="text-sm text-gray-400">Click to upload</p>
-              <p class="text-xs text-gray-500 mt-1">Required image</p>
-              <p class="text-xs text-gray-500">Square format, max 5MB</p>
-              <p class="text-xs text-gray-500">JPG, JPEG, PNG, or WebP</p>
+              <div class="preview-content h-48 flex flex-col items-center justify-center">
+                <i class="fas fa-cloud-upload-alt text-3xl mb-2"></i>
+                <p class="text-sm text-gray-400">Click to upload</p>
+                <p class="text-xs text-gray-500 mt-1">Required image</p>
+                <p class="text-xs text-gray-500">Square format, max 5MB</p>
+              </div>
             `;
           });
 
           // Reset character count
           document.getElementById('variantCharCount').textContent = '0';
+          
+          // Reset size and stock inputs
+          document.querySelectorAll('.size-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+            const stockInput = checkbox.closest('.size-stock-container').querySelector('.size-stock');
+            stockInput.disabled = true;
+            stockInput.value = '';
+          });
           
           // Show modal
           productModal.classList.remove('hidden');
@@ -611,56 +595,75 @@
             button.addEventListener('click', async function() {
                 try {
                     const productId = this.getAttribute('data-id');
+                    
+
                     const response = await fetch(`/admin/product/${productId}`);
                     
+                    
                     if (!response.ok) {
-                        throw new Error('Failed to fetch product details');
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Failed to fetch product details');
                     }
                     
                     const product = await response.json();
+                   
 
-                    // Set form to edit mode
-                    document.getElementById('modalTitle').textContent = 'Edit Product';
+                    // Reset form and populate data
                     document.getElementById('productId').value = product._id;
-                    
-                    // Set form fields
                     document.getElementById('productName').value = product.productName;
                     document.getElementById('brand').value = product.brand;
                     document.getElementById('categoriesId').value = product.categoriesId._id;
                     document.getElementById('variantDescription').value = product.description;
                     document.getElementById('price').value = product.price;
-                    document.getElementById('stock').value = product.stock;
 
-                    // Handle sizes
-                    const sizes = Array.isArray(product.size) ? product.size : [product.size];
-                    document.querySelectorAll('input[name="sizes"]').forEach(checkbox => {
-                        checkbox.checked = sizes.includes(checkbox.value);
+                    // Reset and populate image previews
+                    const imageContainers = document.querySelectorAll('.image-upload-container');
+                    product.imageUrl.forEach((url, index) => {
+                        if (index < imageContainers.length) {
+                            const preview = imageContainers[index].querySelector('.image-preview');
+                            preview.innerHTML = `
+                                <img src="${url}" class="w-full h-full object-cover rounded">
+                            `;
+                        }
                     });
 
-                    // Handle images
-                    if (product.imageUrl && Array.isArray(product.imageUrl)) {
-                        const previews = document.querySelectorAll('.image-preview');
-                        product.imageUrl.forEach((url, index) => {
-                            if (previews[index]) {
-                                previews[index].innerHTML = `
-                                    <div class="preview-content h-48 flex flex-col items-center justify-center">
-                                        <img src="${url}" class="w-full h-full object-cover rounded">
-                                        <p class="text-xs text-gray-500 mt-1">Click to change image</p>
-                                    </div>
-                                `;
+                    // Reset all size-stock inputs
+                    document.querySelectorAll('.size-checkbox').forEach(checkbox => {
+                        checkbox.checked = false;
+                        const stockInput = document.querySelector(`[name="size-stock-${checkbox.value}"]`);
+                        if (stockInput) {
+                            stockInput.disabled = true;
+                            stockInput.value = '';
+                        }
+                    });
+
+                    // Populate the size-stock data
+                    if (product.size && Array.isArray(product.size)) {
+                        product.size.forEach(({ size, stock }) => {
+                            const checkbox = document.querySelector(`.size-checkbox[value="${size}"]`);
+                            if (checkbox) {
+                                checkbox.checked = true;
+                                const stockInput = document.querySelector(`[name="size-stock-${size}"]`);
+                                if (stockInput) {
+                                    stockInput.disabled = false;
+                                    stockInput.value = stock;
+                                }
                             }
                         });
                     }
 
+                    // Update modal title
+                    document.getElementById('modalTitle').textContent = 'Edit Product';
+
                     // Show modal
                     document.getElementById('productModal').classList.remove('hidden');
-
+                    
                 } catch (error) {
-                    console.error('Error fetching product:', error);
+                    console.error('Error fetching product details:', error);
                     await Swal.fire({
                         icon: 'error',
                         title: 'Error',
-                        text: 'Failed to fetch product details',
+                        text: error.message || 'Failed to load product details',
                         confirmButtonColor: '#10B981'
                     });
                 }
@@ -952,259 +955,156 @@
             variantCharCount.textContent = this.value.length;
         });
 
-        // Replace the existing form submission validation with this updated version
-        document.getElementById('productForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            try {
-                // Show loading state
-                Swal.fire({
-                    title: 'Processing...',
-                    text: 'Please wait',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                const formData = new FormData(this);
-                const productId = document.getElementById('productId').value;
-                const isEditMode = !!productId;
-
-                // Validate required fields
-                const requiredFields = ['productName', 'brand', 'categoriesId', 'description', 'price', 'stock'];
-                for (const field of requiredFields) {
-                    const value = formData.get(field);
-                    if (!value || value.trim() === '') {
-                        throw new Error(`${field.charAt(0).toUpperCase() + field.slice(1)} is required`);
-                    }
-                }
-
-                // Validate sizes
-                const selectedSizes = document.querySelectorAll('input[name="sizes"]:checked');
-                if (selectedSizes.length === 0) {
-                    throw new Error('Please select at least one size');
-                }
-
-                // Image validation only for new products
-                if (!isEditMode) {
-                    const imageInputs = document.querySelectorAll('.product-image');
-                    let hasAllImages = true;
-                    imageInputs.forEach(input => {
-                        if (!input.files || !input.files[0]) {
-                            hasAllImages = false;
-                        }
-                    });
-                    
-                    if (!hasAllImages) {
-                        throw new Error('Please upload all 3 images for new products');
-                    }
-                }
-
-                // Send request to appropriate endpoint
-                const url = isEditMode ? `/admin/product/edit/${productId}` : '/admin/product/add';
-                const response = await fetch(url, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    await Swal.fire({
-                        icon: 'success',
-                        title: 'Success!',
-                        text: result.message,
-                        confirmButtonColor: '#10B981'
-                    });
-                    window.location.reload();
-                } else {
-                    throw new Error(result.message || 'Error processing request');
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                await Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: error.message || 'An error occurred while processing your request',
-                    confirmButtonColor: '#10B981'
-                });
+        // Enable/disable stock inputs when size checkboxes change
+        document.querySelectorAll('.size-checkbox').forEach(checkbox => {
+          checkbox.addEventListener('change', function() {
+            const stockInput = document.querySelector(`[name="size-stock-${this.value}"]`);
+            stockInput.disabled = !this.checked;
+            if (this.checked) {
+              stockInput.value = '0';
+            } else {
+              stockInput.value = '';
             }
+          });
         });
 
-        // Add helper function for image validation
-        function validateImageFile(file) {
-          // Validate file size (5MB) 
+        // Update form submission handler
+        document.getElementById('productForm').addEventListener('submit', async function(e) {
+          e.preventDefault();
 
-          // Update valid types to include WebP
-          const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-          if (!validTypes.includes(file.type)) {
+          try {
+            // Collect size and stock data
+            const sizeStockData = [];
+            const checkedSizes = document.querySelectorAll('.size-checkbox:checked');
+            
+            if (checkedSizes.length === 0) {
+              throw new Error('Please select at least one size');
+            }
+
+            checkedSizes.forEach(checkbox => {
+              const size = checkbox.value;
+              const stockInput = document.querySelector(`[name="size-stock-${size}"]`);
+              const stock = parseInt(stockInput.value);
+
+              if (isNaN(stock) || stock < 0) {
+                throw new Error(`Please enter a valid stock number for size ${size}`);
+              }
+
+              sizeStockData.push({ size, stock });
+            });
+
+            // Create FormData object
+            const formData = new FormData(this);
+            
+            // Remove any existing sizeStock data
+            formData.delete('sizeStock');
+            
+            // Add the size-stock data as JSON string
+            formData.append('sizeStock', JSON.stringify(sizeStockData));
+
+            // Show loading state
             Swal.fire({
+              title: 'Processing...',
+              text: 'Please wait while we save the product',
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              }
+            });
+
+            // Determine if this is an edit or add operation
+            const productId = document.getElementById('productId').value;
+            const url = productId ? `/admin/product/edit/${productId}` : '/admin/product/add';
+
+            const response = await fetch(url, {
+              method: 'POST',
+              body: formData
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+              await Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: result.message,
+                confirmButtonColor: '#10B981'
+              });
+              window.location.reload();
+            } else {
+              throw new Error(result.message || 'Error saving product');
+            }
+
+          } catch (error) {
+            console.error('Error:', error);
+            await Swal.fire({
               icon: 'error',
-              title: 'Invalid File Type',
-              text: 'Please upload only JPG, JPEG, PNG, or WebP images',
+              title: 'Error',
+              text: error.message || 'An error occurred while saving the product',
               confirmButtonColor: '#10B981'
             });
-            return false;
           }
-
-          return true;
-        }
-
-        // Add this new code to your existing script section
-        document.addEventListener('DOMContentLoaded', () => {
-          const imageContainers = document.querySelectorAll('.image-upload-container');
-          
-          imageContainers.forEach(container => {
-            const input = container.querySelector('input[type="file"]');
-            const preview = container.querySelector('.image-preview');
-            const errorMessage = container.querySelector('.error-message');
-            
-            preview.addEventListener('click', () => input.click());
-            
-            input.addEventListener('change', function(e) {
-              const file = this.files[0];
-              if (!file) return;
-              
-              // Validate file size
-              if (file.size > 5 * 1024 * 1024) {
-                errorMessage.classList.remove('hidden');
-                this.value = '';
-                return;
-              }
-              
-              // Validate file type
-              const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
-              if (!validTypes.includes(file.type)) {
-                errorMessage.textContent = 'Invalid file type. Only JPG, JPEG, PNG, and WebP are allowed';
-                errorMessage.classList.remove('hidden');
-                this.value = '';
-                return;
-              }
-              
-              // Create preview
-              const reader = new FileReader();
-              reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                  // Check aspect ratio
-                  const aspectRatio = this.width / this.height;
-                  if (Math.abs(aspectRatio - 1) > 0.1) {
-                    errorMessage.textContent = 'Please use a square image (1:1 ratio)';
-                    errorMessage.classList.remove('hidden');
-                    input.value = '';
-                    return;
-                  }
-                  
-                  preview.querySelector('.preview-content').innerHTML = `
-                    <img src="${e.target.result}" class="w-full h-full object-cover rounded">
-                  `;
-                  errorMessage.classList.add('hidden');
-                };
-                img.src = e.target.result;
-              };
-              reader.readAsDataURL(file);
-            });
-          });
-
-          // Handle Edit Product Image Display
-          const editButtons = document.querySelectorAll('.edit-product');
-          editButtons.forEach(button => {
-            button.addEventListener('click', () => {
-              const product = JSON.parse(button.getAttribute('data-product'));
-              if (product.imageUrl && Array.isArray(product.imageUrl)) {
-                const previews = document.querySelectorAll('.preview-content');
-                product.imageUrl.forEach((url, index) => {
-                  if (previews[index]) {
-                    previews[index].innerHTML = `
-                      <img src="${url}" class="w-full h-full object-cover rounded">
-                      <div class="mt-2">
-                        <p class="text-xs text-gray-500">Current image ${index + 1}</p>
-                        <p class="text-xs text-gray-500">Click to change (optional)</p>
-                      </div>
-                    `;
-                  }
-                });
-                
-                // Make image inputs optional for editing
-                document.querySelectorAll('.product-image').forEach(input => {
-                  input.removeAttribute('required');
-                });
-              }
-            });
-          });
-
-          // Form submission validation for images
-          document.getElementById('productForm').addEventListener('submit', function(e) {
-            const productId = document.getElementById('productId').value;
-            const imageInputs = this.querySelectorAll('input[type="file"]');
-            
-            // Image validation only for new products
-            if (!productId) {
-              let hasAllImages = true;
-              let validImages = true;
-              
-              imageInputs.forEach(input => {
-                if (!input.files || !input.files[0]) {
-                  hasAllImages = false;
-                }
-              });
-              
-              if (!hasAllImages) {
-                e.preventDefault();
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Images Required',
-                  text: 'Please upload all 3 images',
-                  confirmButtonColor: '#10B981'
-                });
-                return;
-              }
-            }
-            
-            // Validate any uploaded images (for both new and edit)
-            imageInputs.forEach(input => {
-              if (input.files && input.files[0]) {
-                const file = input.files[0];
-                if (file.size > 5 * 1024 * 1024) {
-                  e.preventDefault();
-                  Swal.fire({
-                    icon: 'error',
-                    title: 'File Too Large',
-                    text: 'Each image must be less than 5MB',
-                    confirmButtonColor: '#10B981'
-                  });
-                  return;
-                }
-              }
-            });
-          });
         });
 
-        // Add this helper function to safely parse JSON
-        function safeJSONParse(str) {
-            try {
-                return JSON.parse(str);
-            } catch (e) {
-                console.error('JSON Parse Error:', e);
-                return null;
+        // Add this function to populate size-stock data when editing
+        function populateSizeStock(sizes) {
+          if (!sizes || !Array.isArray(sizes)) return;
+          
+          sizes.forEach(({ size, stock }) => {
+            const checkbox = document.querySelector(`.size-checkbox[value="${size}"]`);
+            if (checkbox) {
+              checkbox.checked = true;
+              const stockInput = document.querySelector(`[name="size-stock-${size}"]`);
+              if (stockInput) {
+                stockInput.disabled = false;
+                stockInput.value = stock;
+              }
             }
+          });
         }
 
-        // Add this to your existing script
-        function populateSizes(sizes) {
-            if (!sizes) return;
-            
-            // Convert to array if it's not already
-            const sizeArray = Array.isArray(sizes) ? sizes : [sizes];
-            
-            // Check the appropriate checkboxes
-            document.querySelectorAll('input[name="sizes"]').forEach(checkbox => {
-                checkbox.checked = sizeArray.includes(checkbox.value);
-            });
-        }
+        // Update the edit product handler
+        document.querySelectorAll('.edit-product').forEach(button => {
+          button.addEventListener('click', async function() {
+            try {
+              const productId = this.getAttribute('data-id');
+              const response = await fetch(`/admin/product/${productId}`);
+              
+              if (!response.ok) {
+                throw new Error('Failed to fetch product details');
+              }
+              
+              const product = await response.json();
+              
+              // Reset all size-stock inputs
+              document.querySelectorAll('.size-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+                const stockInput = document.querySelector(`[name="size-stock-${checkbox.value}"]`);
+                if (stockInput) {
+                  stockInput.disabled = true;
+                  stockInput.value = '';
+                }
+              });
+
+              // Populate the size-stock data
+              if (product.size && Array.isArray(product.size)) {
+                populateSizeStock(product.size);
+              }
+
+              // Show modal
+              document.getElementById('productModal').classList.remove('hidden');
+              
+            } catch (error) {
+              console.error('Error:', error);
+              await Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: error.message || 'Failed to load product details',
+                confirmButtonColor: '#10B981'
+              });
+            }
+          });
+        });
       });
     </script>
   </body>

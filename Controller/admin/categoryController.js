@@ -114,7 +114,8 @@ const editCatagory = async (req,res)=>{
 };
 
 //soft delete
-const toggleCategory = async(req,res)=>{
+const 
+toggleCategory = async(req,res)=>{
     try{
         const {id}=req.query;
 

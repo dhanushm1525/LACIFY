@@ -189,7 +189,7 @@
                   <div>
                     <dt class="text-sm text-gray-500">Available Sizes</dt>
                     <dd class="text-sm font-medium text-gray-900">
-                        <%= product.size.join(', ') %>
+                        <%= product.size.map(item => item.size).join(', ') %>
                     </dd>
                   </div>
                 </dl>
@@ -201,16 +201,22 @@
                 <%= product.description %> 
                 <h3 class="text-lg font-semibold text-gray-900 mb-4">Select Size</h3>
                 <div class="grid grid-cols-5 gap-2">
-                    <% product.size.forEach(availableSize => { %>
+                    <% product.size.forEach(sizeObj => { %>
                         <button 
-                            onclick="selectSize('<%= availableSize %>')"
-                            class="size-button px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-800 hover:border-gray-900 transition-colors"
-                            data-size="<%= availableSize %>">
-                            <%= availableSize %>
+                            onclick="selectSize('<%= sizeObj.size %>', <%= sizeObj.stock %>)"
+                            class="size-button px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-800 hover:border-gray-900 transition-colors relative <%= sizeObj.stock === 0 ? 'opacity-50 cursor-not-allowed' : '' %>"
+                            data-size="<%= sizeObj.size %>"
+                            <%= sizeObj.stock === 0 ? 'disabled' : '' %>
+                        >
+                            <%= sizeObj.size %>
+                            <span class="absolute -top-2 -right-2 text-xs bg-gray-100 px-1.5 py-0.5 rounded-full">
+                                <%= sizeObj.stock %>
+                            </span>
                         </button>
                     <% }); %>
                 </div>
                 <p id="sizeError" class="text-red-500 text-sm mt-2 hidden">Please select a size</p>
+                <p id="stockError" class="text-red-500 text-sm mt-2 hidden">Selected size is out of stock</p>
               </div>
 
               <!-- Actions -->
@@ -453,8 +459,11 @@
       });
 
       let selectedSize = null;
+      let selectedSizeStock = 0;
 
-      function selectSize(size) {
+      function selectSize(size, stock) {
+        if (stock === 0) return;
+
         // Remove active class from all buttons
         document.querySelectorAll('.size-button').forEach(btn => {
           btn.classList.remove('border-gray-900', 'bg-gray-900', 'text-white');
@@ -467,7 +476,9 @@
         button.classList.add('border-gray-900', 'bg-gray-900', 'text-white');
         
         selectedSize = size;
+        selectedSizeStock = stock;
         document.getElementById('sizeError').classList.add('hidden');
+        document.getElementById('stockError').classList.add('hidden');
       }
 
       function showToast(type, message) {
@@ -544,17 +555,8 @@
           return;
         }
 
-        // Validate that selected size is available
-        const availableSizes = Array.from(document.querySelectorAll('.size-button')).map(btn => btn.dataset.size);
-        if (!availableSizes.includes(selectedSize)) {
-            showToast('error', 'Selected size is not available');
-            return;
-        }
-
-        const button = document.getElementById(`cartButton-${productId}`);
-        
-        if (button.classList.contains('in-cart')) {
-            window.location.href = '/cart';
+        if (selectedSizeStock === 0) {
+            document.getElementById('stockError').classList.remove('hidden');
             return;
         }
 
@@ -586,6 +588,7 @@
                 }
 
                 // Update button appearance
+                const button = document.getElementById(`cartButton-${productId}`);
                 button.classList.add('in-cart', 'bg-green-600', 'hover:bg-green-700');
                 button.classList.remove('bg-gray-900', 'hover:bg-gray-800');
                 button.innerHTML = `

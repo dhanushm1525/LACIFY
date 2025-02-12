@@ -38,19 +38,24 @@ const productSchema = new mongoose.Schema({
         min: 0,
         max: 5
     },
-    stock: {
-        type: Number,
-        required: true,
-        min: 0
-    },
     size: {
-        type: [String],
+        type: [{
+            size: {
+                type: String,
+                required: true
+            },
+            stock: {
+                type: Number,
+                required: true,
+                min: 0
+            }
+        }],
         required: true,
         validate: {
-            validator: function(sizes) {
-                return sizes && sizes.length > 0;
+            validator: function(sizeStock) {
+                return sizeStock && sizeStock.length > 0;
             },
-            message: 'At least one size must be selected'
+            message: 'At least one size with stock must be selected'
         }
     },
     imageUrl: {

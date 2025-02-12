@@ -18,35 +18,33 @@ const getProductDetails = async (req, res) => {
         })
         .limit(4);
 
-        // Convert to plain objects and ensure all properties exist
+        // Process the product data
         const processedProduct = {
             ...product.toObject(),
             productName: product.productName || '',
             brand: product.brand || '',
             description: product.description || '',
             price: product.price || 0,
-            stock: product.stock || 0,
-            size: product.size || '',
+            size: product.size || [], // This is already the array of {size, stock} objects
             imageUrl: product.imageUrl || [],
-            categoriesId: {
-                _id: product.categoriesId._id,
-                name: product.categoriesId.name || ''
-            }
+            rating: product.rating || 0
         };
+
+        // Calculate total stock
+        processedProduct.stock = processedProduct.size.reduce((total, item) => total + (item.stock || 0), 0);
 
         const processedRelatedProducts = relatedProducts.map(p => ({
             ...p.toObject(),
             productName: p.productName || '',
             brand: p.brand || '',
             price: p.price || 0,
-            size: p.size || '',
             imageUrl: p.imageUrl || []
         }));
 
-        res.render('user/viewProduct', { 
+        res.render('user/viewProduct', {
             product: processedProduct,
             relatedProducts: processedRelatedProducts,
-            title: product.productName || 'Product Details'
+            title: processedProduct.productName
         });
 
     } catch (error) {

@@ -86,8 +86,6 @@ const renderProductPage = async (req, res) => {
 
 // Add New Product
 const addProduct = async (req, res) => {
-
-    console.log('hi')    
     const uploadMultiple = upload.array('images', 3);
 
     uploadMultiple(req, res, async (err) => {
@@ -119,13 +117,30 @@ const addProduct = async (req, res) => {
                 categoriesId,
                 description,
                 price,
-                stock,
-                size
+                sizeStock // This will be a JSON string from the form
             } = req.body;
 
             // Validate required fields
-            if (!productName || !brand || !categoriesId || !price || !stock) {
+            if (!productName || !brand || !categoriesId || !price || !sizeStock) {
                 return res.status(400).json({ message: 'All fields are required' });
+            }
+
+            // Parse and validate size-stock data
+            let sizeStockArray;
+            try {
+                sizeStockArray = JSON.parse(sizeStock);
+                if (!Array.isArray(sizeStockArray) || sizeStockArray.length === 0) {
+                    throw new Error('Invalid size and stock data');
+                }
+
+                // Validate each size-stock pair
+                sizeStockArray.forEach(({ size, stock }) => {
+                    if (!size || typeof stock !== 'number' || stock < 0 || stock > 1000) {
+                        throw new Error('Invalid stock value for size ' + size);
+                    }
+                });
+            } catch (error) {
+                return res.status(400).json({ message: 'Invalid size and stock data: ' + error.message });
             }
 
             // Validate product name and brand
@@ -156,8 +171,7 @@ const addProduct = async (req, res) => {
                 categoriesId,
                 description: description.trim(),
                 price: parseFloat(price),
-                stock: parseInt(stock),
-                size: Array.isArray(req.body.sizes) ? req.body.sizes : [req.body.sizes],
+                size: sizeStockArray, // Use the parsed and validated size-stock array
                 imageUrl: imageUrls,
                 isActive: true
             });
@@ -196,19 +210,21 @@ const getProductDetails = async (req, res) => {
         const sanitizedProduct = {
             ...product.toObject(),
             _id: product._id.toString(),
-            productName: product.productName || '',
-            brand: product.brand || '',
             categoriesId: {
                 _id: product.categoriesId._id.toString(),
                 name: product.categoriesId.name
             },
-            description: product.description || '',
-            price: product.price || 0,
-            stock: product.stock || 0,
-            size: Array.isArray(product.size) ? product.size : [product.size],
+            // Ensure size array is properly formatted
+            size: product.size.map(sizeItem => ({
+                size: sizeItem.size,
+                stock: sizeItem.stock
+            })),
             imageUrl: product.imageUrl || [],
             isActive: product.isActive
         };
+
+        // Log the response for debugging
+       
 
         res.json(sanitizedProduct);
     } catch (error) {
@@ -227,7 +243,15 @@ const updateProduct = async (req, res) => {
         }
 
         try {
-            const { productId, productName, brand, categoriesId, description, price, stock } = req.body;
+            const { 
+                productId, 
+                productName, 
+                brand, 
+                categoriesId, 
+                description, 
+                price, 
+                sizeStock 
+            } = req.body;
             
             // Get existing product
             const existingProduct = await Product.findById(productId);
@@ -235,8 +259,26 @@ const updateProduct = async (req, res) => {
                 return res.status(404).json({ message: 'Product not found' });
             }
 
+            // Parse and validate size-stock data
+            let sizeStockArray;
+            try {
+                sizeStockArray = JSON.parse(sizeStock);
+                if (!Array.isArray(sizeStockArray) || sizeStockArray.length === 0) {
+                    throw new Error('Invalid size and stock data');
+                }
+
+                // Validate each size-stock pair
+                sizeStockArray.forEach(({ size, stock }) => {
+                    if (!size || typeof stock !== 'number' || stock < 0 || stock > 1000) {
+                        throw new Error('Invalid stock value for size ' + size);
+                    }
+                });
+            } catch (error) {
+                return res.status(400).json({ message: 'Invalid size and stock data: ' + error.message });
+            }
+
             // Handle image updates
-            let updatedImageUrls = [...existingProduct.imageUrl]; // Copy existing image URLs
+            let updatedImageUrls = [...existingProduct.imageUrl];
             
             if (req.files && req.files.length > 0) {
                 // For each new image uploaded
@@ -268,8 +310,7 @@ const updateProduct = async (req, res) => {
                     categoriesId,
                     description: description.trim(),
                     price: parseFloat(price),
-                    stock: parseInt(stock),
-                    size: Array.isArray(req.body.sizes) ? req.body.sizes : [req.body.sizes],
+                    size: sizeStockArray, // Use the parsed and validated size-stock array
                     imageUrl: updatedImageUrls
                 },
                 { new: true }
