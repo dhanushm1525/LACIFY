@@ -6,6 +6,7 @@ import userController from '../Controller/admin/userController.js'
 import categoryController from '../Controller/admin/categoryController.js'
 import productController from '../Controller/admin/productController.js'
 import orderController from '../Controller/admin/orderController.js'
+import couponController from '../Controller/admin/couponController.js'
 const router = Router()
 
 
@@ -31,7 +32,11 @@ router.post('/product/toggle-status/:id',adminMiddleware.checkSession,adminMiddl
 router.get('/orders',adminMiddleware.checkSession,orderController.getOrders)
 router.post('/orders/:orderId/status', adminMiddleware.checkSession,adminMiddleware.errorHandler, orderController.updateOrderStatus);
 router.patch('/orders/:orderId/items/:productId/status', adminMiddleware.checkSession, adminMiddleware.errorHandler,orderController.updateItemStatus);
-router.post('/orders/:orderId/items/:productId/return', adminMiddleware.checkSession, orderController.handleReturnRequest);
+router.post('/orders/:orderId/items/:productId/return', adminMiddleware.checkSession,adminMiddleware.errorHandler, orderController.handleReturnRequest);
+
+
+router.get('/coupon', adminMiddleware.checkSession,adminMiddleware.errorHandler, couponController.getCoupons);
+router.post('/coupons/add', adminMiddleware.checkSession,adminMiddleware.errorHandler, couponController.addCoupons);
 
 
 

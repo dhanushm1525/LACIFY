@@ -62,7 +62,7 @@ router.get('/orders',userMiddleware.checkSession,orderController.getOrders)
 router.patch('/orders/:orderId/items/:productId/cancel', userMiddlewares.checkSession, orderController.cancelOrder);
 
 router.get('/wallet', userMiddlewares.checkSession, walletController.getWallet);
-router.post('/orders/:orderId/items/:productId/return', userMiddlewares.checkSession,orderController.requestReturnItem);
+router.post('/orders/:orderId/items/:productId/return', userMiddlewares.checkSession,userMiddleware.errorHandler,orderController.requestReturnItem);
 
 
 export default router;
