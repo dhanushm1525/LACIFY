@@ -1,6 +1,6 @@
 import orderSchema from '../../model/orderModel.js';
 import productSchema from '../../model/productModel.js';
-
+import Wallet from '../../model/walletModel.js';
 
 const getOrders = async (req,res)=>{
     try{
@@ -58,7 +58,7 @@ const getOrders = async (req,res)=>{
     }
 };
 
-const updateOrderStatus = async (req,res)=>{
+const updateOrderStatus = async (req,res,next)=>{
     try{
         const {orderId}=req.params;
         const {status}=req.body;
@@ -101,16 +101,12 @@ const updateOrderStatus = async (req,res)=>{
             message:'Order status updated succesfully'
         });
     }catch(error){
-        console.error('Update order status error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to update order status'
-        });
+        next(error)
     }
 };
 
 
-const updateItemStatus = async (req,res)=>{
+const updateItemStatus = async (req,res,next)=>{
     try {
         const { orderId, productId } = req.params;
         const { status } = req.body;
@@ -172,16 +168,138 @@ const updateItemStatus = async (req,res)=>{
         res.json({ success: true, message: 'Item status updated successfully' });
 
     } catch (error) {
-        console.error('Update item status error:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Failed to update item status'
-        });
+       next(error)
     }
+};
+
+const handleReturnRequest = async (req,res,next)=>{
+    try{
+        const { orderId , productId} = req.params;
+        const {returnStatus , adminComment}= req.body;
+
+        const order=  await orderSchema.findById(orderId)
+        .populate('items.product');
+
+        if(!order){
+            return res.status(404).json({
+                success:false,
+                messaage:'Order not found'
+            });
+        }
+
+        const item = order.items.find(item=>
+            item.product._id.toString()===productId
+        );
+
+
+        if(!item){
+            return res.status(404).json({
+                success:false,
+                messaage:'item not found'
+            });
+        }
+
+        item.return.status = returnStatus;
+        item.return.adminComment = adminComment;
+        item.return.isReturnAccepted = returnStatus==='approved';
+
+        if(returnStatus === 'approved'){
+            item.order.status === 'returned';
+            item.order.statusHistory.push({
+                status:'returned',
+                date:new Date(),
+                comment:`return approved by admin:${adminComment}`
+            });
+
+            //restore stock
+             // Get the product
+         const product = await productSchema.findById(productId);
+        if (!product) {
+           return res.status(404).json({
+             success: false,
+         message: 'Product not found'
+            });
+                    }
+         // Get the size from the order history
+        const orderSize = item.size ;
+        
+
+        // Find the specific size in the product's size array
+        const sizeIndex = product.size.findIndex(s => s.size === orderSize);
+        
+
+        if (sizeIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: 'Size not found in product'
+            });
+        }
+
+        // Calculate new stock for the specific size
+        const currentStock = product.size[sizeIndex].stock;
+        const quantityToAdd = Number(item.quantity);
+        const newStock = currentStock + quantityToAdd;
+
+       
+
+        // Update the stock for the specific size
+        product.size[sizeIndex].stock = newStock;
+        await product.save();
+
+
+        order.payment.paymentStatus = 'refunded';
+        //process refund
+        await processItemRefund(order,item);
+        }else if(returnStatus==='rejected'){
+            item.order.status = 'delivered';
+            item.order.statusHistory.push({
+                status: 'delivered',
+                date: new Date(),
+                comment: `Return rejected by admin: ${adminComment}`
+            });
+
+            //set payment status to completed 
+            order.payment.paymentStatus = 'completed';
+
+        }
+
+        await order.save();
+        res.json({
+            success:true,
+            messaage:'Return request handled successfully'
+        });
+
+    }catch(error){
+        next(error)
+    }
+};
+
+
+//heper function to process rfund
+
+async function processItemRefund(order){
+    const wallet = await Wallet.findOne({userId:order.userId});
+
+    if(!wallet){
+        throw new error('User wallet not found');
+    }
+
+    const refundAmount = item.subtotal;
+    wallet.balance+=refundAmount;
+    wallet.transactions.push({
+        type:'credit',
+        amount:refundAmount,
+        description:`Refund for item in order #${order.orderCode}`,
+        orderId:order._id
+    });
+
+    await wallet.save();
+    order.payment.paymentStatus = 'refunded';
 }
 
 export default {
     getOrders,
     updateOrderStatus,
-    updateItemStatus
+    updateItemStatus,
+    handleReturnRequest
 }

@@ -244,6 +244,9 @@ const placeOrder = async (req,res)=>{
 }
 
 
+
+
+
 export default{
     getCheckoutPage,
     placeOrder

@@ -9,6 +9,7 @@ import addressController from '../Controller/user/addressController.js';
 import userCartController from '../Controller/user/cartController.js';
 import checkoutController from '../Controller/user/checkoutController.js';
 import orderController from '../Controller/user/orderController.js';
+import walletController from '../Controller/user/walletController.js';
 
 const router = Router()
 
@@ -22,7 +23,6 @@ router.get('/logout', userMiddlewares.checkSession, authController.getLogout);
 
 
 router.get('/',shopnhomeController.getHome)
-// router.get('/home', shopnhomeController.getHome);
 router.get('/home',userMiddleware.checkSession,shopnhomeController.getHome)
 router.get('/shop', shopnhomeController.getShop);
 
@@ -60,4 +60,9 @@ router.post('/checkout/place-order', userMiddlewares.checkSession, checkoutContr
 
 router.get('/orders',userMiddleware.checkSession,orderController.getOrders)
 router.patch('/orders/:orderId/items/:productId/cancel', userMiddlewares.checkSession, orderController.cancelOrder);
+
+router.get('/wallet', userMiddlewares.checkSession, walletController.getWallet);
+router.post('/orders/:orderId/items/:productId/return', userMiddlewares.checkSession,orderController.requestReturnItem);
+
+
 export default router;

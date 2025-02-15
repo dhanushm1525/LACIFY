@@ -7,7 +7,7 @@ const getAdmin = (req,res)=>{
     res.render('admin/login')
 } 
 
-const postAdmin = async (req, res) => {
+const postAdmin = async (req, res,next) => {
     try {
         const { email, password } = req.body;
 
@@ -43,11 +43,7 @@ const postAdmin = async (req, res) => {
             });
         }
     } catch (error) {
-        console.error('Admin login error:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'An error occurred during login'
-        });
+      next(error)
     }
 }
 

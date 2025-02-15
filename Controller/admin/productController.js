@@ -38,7 +38,7 @@ const validateBrand = (brand) => {
 };
 
 // Render Product Management Page
-const renderProductPage = async (req, res) => {
+const renderProductPage = async (req, res,next) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = 10; // Items per page
@@ -79,13 +79,12 @@ const renderProductPage = async (req, res) => {
             endIndex: skip + products.length
         });
     } catch (error) {
-        console.error('Error rendering product page:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        next(error)
     }
 };
 
 // Add New Product
-const addProduct = async (req, res) => {
+const addProduct = async (req, res,next) => {
     const uploadMultiple = upload.array('images', 3);
 
     uploadMultiple(req, res, async (err) => {
@@ -140,7 +139,7 @@ const addProduct = async (req, res) => {
                     }
                 });
             } catch (error) {
-                return res.status(400).json({ message: 'Invalid size and stock data: ' + error.message });
+                next(error)
             }
 
             // Validate product name and brand
@@ -197,7 +196,7 @@ const addProduct = async (req, res) => {
 };
 
 // Get Product Details for Editing
-const getProductDetails = async (req, res) => {
+const getProductDetails = async (req, res,next) => {
     try {
         const product = await Product.findById(req.params.id)
             .populate('categoriesId');
@@ -228,13 +227,12 @@ const getProductDetails = async (req, res) => {
 
         res.json(sanitizedProduct);
     } catch (error) {
-        console.error('Error fetching product details:', error);
-        res.status(500).json({ message: 'Error fetching product details' });
+        next(error)
     }
 };
 
 // Update Product
-const updateProduct = async (req, res) => {
+const updateProduct = async (req, res,next) => {
     const uploadMultiple = upload.array('images', 3);
 
     uploadMultiple(req, res, async (err) => {
@@ -274,7 +272,7 @@ const updateProduct = async (req, res) => {
                     }
                 });
             } catch (error) {
-                return res.status(400).json({ message: 'Invalid size and stock data: ' + error.message });
+                next(error)
             }
 
             // Handle image updates
@@ -335,7 +333,7 @@ const updateProduct = async (req, res) => {
 };
 
 // Toggle Product Status
-const toggleProductStatus = async (req, res) => {
+const toggleProductStatus = async (req, res,next) => {
     try {
         const product = await Product.findById(req.params.id);
 
@@ -351,8 +349,7 @@ const toggleProductStatus = async (req, res) => {
             isActive: product.isActive
         });
     } catch (error) {
-        console.error('Error toggling product status:', error);
-        res.status(500).json({ message: 'Internal server error' });
+        next(error)
     }
 };
 

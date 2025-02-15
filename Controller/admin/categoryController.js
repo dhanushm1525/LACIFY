@@ -1,19 +1,18 @@
 import Category from "../../model/categoryModel.js";
 
 //render category page
-const getCategories = async(req,res)=>{
+const getCategories = async(req,res,next)=>{
     try{
         const categories = await Category.find().sort({createdAt:-1});
         res.render('admin/category',{categories});
     }catch(error){
-        console.error('Error Fetching categories:',error);
-        res.status(500).send('Error Fetching Categories');
+        next(error)
     }
 };
 
 //add category
 
-const addCategory=async(req,res)=>{
+const addCategory=async(req,res,next)=>{
     try{
         const {categoryName,categoryDescription}=req.body;
         const trimmedategoryName = categoryName.trim();
@@ -57,14 +56,13 @@ const addCategory=async(req,res)=>{
         await newCategory.save();
         res.redirect('/admin/category');
      }catch(error){
-        console.error('Error adding category',error);
-        res.status(500).send('Error adding Category');
+      next(error)
      }
 };
 
 
 //Edit category
-const editCatagory = async (req,res)=>{
+const editCatagory = async (req,res,next)=>{
     try{
         const {categoryId,categoryName,categoryDescription}=req.body;
         const trimmedCategoryName = categoryName.trim();
@@ -108,14 +106,13 @@ const editCatagory = async (req,res)=>{
         res.redirect('/admin/category');
 
     }catch(error){
-        console.error('Error editing Category',error);
-        res.status(500).send('Error editinng Category');
+   next(error)
     }
 };
 
 //soft delete
 const 
-toggleCategory = async(req,res)=>{
+toggleCategory = async(req,res,next)=>{
     try{
         const {id}=req.query;
 
@@ -136,11 +133,8 @@ toggleCategory = async(req,res)=>{
         });
 
     }catch(error){
-        console.error('Error toggling category',error);
-        return res.status(500).json({
-            success:false,
-            message:'Error toggling category status'
-        });
+       next(error)
+        
     }
 };
 
