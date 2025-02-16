@@ -42,7 +42,8 @@ router.delete('/coupons/delete/:id', adminMiddleware.checkSession, adminMiddlewa
 
 router.get('/offers', adminMiddleware.checkSession,adminMiddleware.errorHandler, offerController.getOffers);
 router.post('/offers', adminMiddleware.checkSession,adminMiddleware.errorHandler, offerController.createOffer);
-
+router.put('/offers/:offerId', adminMiddleware.checkSession,adminMiddleware.errorHandler, offerController.updateOffer);
+router.delete('/offers/:offerId', adminMiddleware.checkSession,adminMiddleware.errorHandler, offerController.deleteOffer);
 export default router
 
 
