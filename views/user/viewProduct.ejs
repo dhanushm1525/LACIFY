@@ -127,41 +127,20 @@
               </div>
 
              <!-- Price -->
-<div class="space-y-4">
-    <div class="flex items-baseline gap-3">
-      <span class="text-4xl font-bold text-gray-900">₹<%= product.price.toLocaleString() %></span>
-      <span class="text-xl text-gray-500 line-through">₹<%= (product.price * 1.2).toLocaleString() %></span>
-      <span class="text-sm font-medium text-green-600 bg-green-50 px-2 py-1 rounded">20% OFF</span>
-    </div>
-    
-    <!-- Coupon Section -->
-    <div class="bg-gray-50 rounded-xl p-4 space-y-3">
-      <div class="flex items-center gap-2">
-        <i class="fas fa-tag text-blue-600"></i>
-        <span class="font-medium text-gray-900">Available Offers</span>
-      </div>
-      
-      <div class="flex items-start gap-3">
-        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 flex-shrink-0">
-          <i class="fas fa-percent text-blue-600 text-sm"></i>
-        </div>
-        <div>
-          <p class="text-sm text-gray-600">Use code <span class="font-medium text-gray-900">FIRST20</span></p>
-          <p class="text-xs text-gray-500">Get additional 20% off on orders above ₹999</p>
-        </div>
-      </div>
-      
-      <div class="flex items-start gap-3">
-        <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-100 flex-shrink-0">
-          <i class="fas fa-credit-card text-purple-600 text-sm"></i>
-        </div>
-        <div>
-          <p class="text-sm text-gray-600">Use code <span class="font-medium text-gray-900">BANK10</span></p>
-          <p class="text-xs text-gray-500">10% instant discount on all bank cards</p>
-        </div>
-      </div>
-    </div>
-  </div>
+             <div class="space-y-2">
+              <% if (product.discountPrice < product.originalPrice) { %>
+                <div class="flex items-baseline gap-3">
+                  <span class="text-4xl font-bold text-gray-900">₹<%= product.discountPrice %></span>
+                  <span class="text-xl text-gray-400 line-through">₹<%= product.originalPrice %></span>
+                  <span class="bg-white/90 backdrop-blur-sm text-gray-900 px-3 py-1 rounded-full text-sm font-medium">
+                    -<%= Math.round((product.originalPrice - product.discountPrice) / product.originalPrice * 100) %>%
+                  </span>
+                </div>
+              <% } else { %>
+                <span class="text-4xl font-bold text-gray-900">₹<%= product.originalPrice %></span>
+              <% } %>
+            </div>
+   
 
               <!-- Stock Status -->
               <div>

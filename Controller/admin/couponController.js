@@ -9,7 +9,7 @@ const getCoupons = async (req,res)=>{
     }
 };
 
-const addCoupons = async (req,res)=>{
+const addCoupons = async (req,res,next)=>{
     try{
         const {
             code,
@@ -66,10 +66,28 @@ const addCoupons = async (req,res)=>{
     }catch(error){
         next(error)
     }
-}
+};
+
+const deleteCoupon = async (req,res,next)=>{
+    try{
+        const deletedCoupon = await Coupon.findByIdAndDelete(req.params.id);
+        if(!deletedCoupon){
+            return res.status(404).json({
+                message:'coupon not found'
+            });
+        }
+
+        res.status(200).json({
+            message:'Coupon deleted successfully'
+        });
+    }catch(error){
+        next(error)
+    }
+};
 
 
 export default{
     getCoupons,
-    addCoupons
+    addCoupons,
+    deleteCoupon
 }

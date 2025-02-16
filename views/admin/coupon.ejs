@@ -106,11 +106,11 @@
                                     <td class="px-6 py-4">
                                         <div class="flex space-x-2">
                                             <!-- Edit Button -->
-                                            <button class="edit-coupon px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                                            <!-- <button class="edit-coupon px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
                                                     data-id="<%= coupon._id %>"
                                                     <%= isExpired ? '' : '' %>>
                                                 Edit
-                                            </button>
+                                            </button>  -->
 
                                             <!-- Toggle Status Button -->
                                             <!-- <button class="toggle-status px-3 py-1 <%= coupon.isActive ? 'bg-gray-600 hover:bg-gray-700' : 'bg-green-600 hover:bg-green-700' %> text-white rounded-lg transition"
@@ -510,7 +510,7 @@
             if (result.isConfirmed) {
               try {
                 const response = await fetch(`/admin/coupons/delete/${couponId}`, {
-                  method: 'POST'
+                  method: 'DELETE'
                 });
 
                 if (!response.ok) {

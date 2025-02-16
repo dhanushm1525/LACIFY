@@ -3,11 +3,11 @@ import { config } from 'dotenv';
 
 config()
 
-const getAdmin = (req,res)=>{
+const getAdmin = (req, res) => {
     res.render('admin/login')
-} 
+}
 
-const postAdmin = async (req, res,next) => {
+const postAdmin = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
@@ -43,12 +43,12 @@ const postAdmin = async (req, res,next) => {
             });
         }
     } catch (error) {
-      next(error)
+        next(error)
     }
 }
 
-const getLogout = (req , res)=>{
-    req.session.destroy(()=>{
+const getLogout = (req, res) => {
+    req.session.destroy(() => {
         res.redirect('/admin/login')
     });
 }
@@ -58,5 +58,5 @@ export default {
     getAdmin,
     postAdmin,
     getLogout
-    
+
 }
