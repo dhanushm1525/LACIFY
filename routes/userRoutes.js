@@ -64,6 +64,7 @@ router.patch('/orders/:orderId/items/:productId/cancel', userMiddlewares.checkSe
 
 router.get('/wishlist', userMiddlewares.checkSession,userMiddleware.errorHandler, wishlistController.getWishlist);
 router.post('/wishlist/add', userMiddlewares.checkSession,userMiddleware.errorHandler, wishlistController.addToWishlist);
+router.delete('/wishlist/remove/:productId', userMiddlewares.checkSession,userMiddleware.errorHandler, wishlistController.removeWishlist);
 
 router.get('/wallet', userMiddlewares.checkSession, walletController.getWallet);
 router.post('/orders/:orderId/items/:productId/return', userMiddlewares.checkSession,userMiddleware.errorHandler,orderController.requestReturnItem);

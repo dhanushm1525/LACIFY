@@ -76,9 +76,10 @@
                                                 class="flex-1 bg-gray-300 text-gray-600 px-3 py-1.5 rounded text-xs">
                                             Unavailable
                                         </button>
-                                    <% } else if (item.productId.stock > 0) { %>
-                                        <button onclick="addToCart('<%= item.productId._id %>')"
-                                                class="flex-1 bg-black text-white px-3 py-1.5 rounded text-xs">
+                                    <% } else if (item.productId.size.some(sizeObj => sizeObj.stock > 0)) { %>
+                                        <button 
+                                            onclick="addToCart('<%= item.productId._id %>', '<%= item.size %>')"
+                                            class="flex-1 bg-gray-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-800 transition-all">
                                             Add to Cart
                                         </button>
                                     <% } else { %>
@@ -144,10 +145,10 @@
                                         >
                                             Unavailable
                                         </button>
-                                    <% } else if (item.productId.stock > 0) { %>
+                                    <% } else if (item.productId.size.some(sizeObj => sizeObj.stock > 0)) { %>
                                         <button 
-                                            onclick="addToCart('<%= item.productId._id %>')"
-                                            class="bg-black text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-gray-800 transition-colors flex-1"
+                                            onclick="addToCart('<%= item.productId._id %>', '<%= item.size %>')"
+                                            class="bg-gray-900 text-white px-4 py-2 rounded-lg font-medium hover:bg-gray-800 transition-all flex-1"
                                         >
                                             Add to Cart
                                         </button>
@@ -300,33 +301,47 @@
             }
         }
 
-        async function addToCart(productId) {
+        async function addToCart(productId, size) {
             try {
+                const loadingId = showToast('loading', 'Adding to cart...');
+
                 const response = await fetch('/cart/add', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ productId, quantity: 1 })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        productId,
+                        quantity: 1,
+                        size: size  // Use the size from wishlist
+                    })
                 });
 
                 const data = await response.json();
+                removeToast(loadingId);
 
-                if (response.status === 400 && data.message.includes('not available')) {
-                    showToast('error', 'Product Unavailable');
-                    // Reload page to update product status
-                    setTimeout(() => window.location.reload(), 1500);
-                    return;
-                }
-
-                if (data.message && data.message.includes('added to cart')) {
-                    showToast('success', 'Success', data.message);
-                } else if (data.message && data.message.includes('Maximum limit')) {
-                    showToast('warning', 'Quantity Limit Reached', data.message);
+                if (response.ok) {
+                    showToast('success', 'Added to cart successfully');
+                    
+                    // Update cart count in navbar if needed
+                    const cartCountElement = document.querySelector('.cart-count');
+                    if (cartCountElement && data.cartCount) {
+                        cartCountElement.textContent = data.cartCount;
+                    }
                 } else {
-                    throw new Error(data.message || 'Failed to add to cart');
+                    throw new Error(data.message);
                 }
             } catch (error) {
-                console.error('Cart error:', error);
-                showToast('error', 'Error', error.message || 'Error adding to cart');
+                removeToast(loadingId);
+                showToast('error', error.message || 'Failed to add to cart');
+            }
+        }
+
+        function removeToast(id) {
+            const toast = document.getElementById(id);
+            if (toast) {
+                toast.classList.add('translate-x-full');
+                setTimeout(() => toast.remove(), 300);
             }
         }
 

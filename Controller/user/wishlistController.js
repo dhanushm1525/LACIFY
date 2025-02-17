@@ -27,50 +27,94 @@ const getWishlist = async (req, res, next) => {
 const addToWishlist = async (req, res, next) => {
     try {
         const userId = req.session.user;
-        const { productId } = req.body;
+        const { productId, size } = req.body;
 
-        //chekif product exists
+        if (!size) {
+            return res.status(400).json({
+                success: false,
+                message: 'Size is required'
+            });
+        }
+
+        // Check if product exists
         const product = await Product.findById(productId);
         if (!product) {
             return res.status(404).json({
-                sucess: false,
-                message: 'product not found'
+                success: false,
+                message: 'Product not found'
             });
         }
 
-        //find or create wishlist
+        // Validate size exists for product
+        const sizeExists = product.size.some(s => s.size === size);
+        if (!sizeExists) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid size selected'
+            });
+        }
+
+        // Find or create wishlist
         let wishlist = await Wishlist.findOne({ userId });
         if (!wishlist) {
-           wishlist = new Wishlist({userId,items:[]});
+            wishlist = new Wishlist({ userId, items: [] });
         }
 
-        //check if prodicg is already in wishlist 
+        // Check if product with same size is already in wishlist
         const existingItem = wishlist.items.find(
-            item=>item.productId.toString()===productId
+            item => item.productId.toString() === productId && item.size === size
         );
 
-        if(existingItem){
+        if (existingItem) {
             return res.status(400).json({
-                success:false,
-                message:'Product already in wishlist'
+                success: false,
+                message: 'Product with selected size already in wishlist'
             });
         }
 
-        //add to wishlist 
-        wishlist.items.push({productId});
+        // Add to wishlist
+        wishlist.items.push({ productId, size });
         await wishlist.save();
 
         res.json({
-            success:true,
-            message:'product added to wishlist'
+            success: true,
+            message: 'Product added to wishlist'
         });
 
-    }catch(error) {
+    } catch (error) {
+        next(error);
+    }
+};
+
+
+const removeWishlist = async (req,res,next)=>{
+    try{
+        const userId = req.session.user;
+        const {productId} = req.body;
+
+        const wish = await Wishlist.updateOne(
+            {userId},
+            {$pull:{items:{productId}}}
+        );
+
+        if(wish.modifiedCount===0){
+            return res.status(404).json({
+                success:false,
+                message:'Product not found in wishlist'
+            });
+        }
+
+        res.json({
+            success:true,
+            message:'Product removed from wishlist'
+        });
+    }catch(error){
         next(error)
     }
 }
 
 export default {
     getWishlist,
-    addToWishlist
+    addToWishlist,
+    removeWishlist
 }

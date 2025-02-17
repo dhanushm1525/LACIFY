@@ -383,6 +383,12 @@
 
       async function toggleWishlist(productId) {
         try {
+            if (!selectedSize) {
+                showToast('error', 'Please select a size first');
+                document.getElementById('sizeError').classList.remove('hidden');
+                return;
+            }
+
             const wishlistBtn = document.querySelector(`#wishlist-btn-${productId} i`);
             const isInWishlist = wishlistBtn.classList.contains('fas');
             const loadingId = showToast('loading', isInWishlist ? 'Removing from wishlist...' : 'Adding to wishlist...');
@@ -405,7 +411,10 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ productId })
+                    body: JSON.stringify({ 
+                        productId,
+                        size: selectedSize 
+                    })
                 });
                 const data = await response.json();
                 removeToast(loadingId);
@@ -414,10 +423,12 @@
                     wishlistBtn.classList.replace('far', 'fas');
                     wishlistBtn.classList.add('text-red-500');
                     showToast('success', 'Added to wishlist');
+                } else {
+                    throw new Error(data.message);
                 }
             }
         } catch (error) {
-            showToast('error', 'Failed to update wishlist');
+            showToast('error', error.message || 'Failed to update wishlist');
         }
       }
 
