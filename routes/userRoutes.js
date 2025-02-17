@@ -10,6 +10,7 @@ import userCartController from '../Controller/user/cartController.js';
 import checkoutController from '../Controller/user/checkoutController.js';
 import orderController from '../Controller/user/orderController.js';
 import walletController from '../Controller/user/walletController.js';
+import wishlistController from '../Controller/user/wishlistController.js';
 
 const router = Router()
 
@@ -60,6 +61,9 @@ router.post('/checkout/place-order', userMiddlewares.checkSession, checkoutContr
 
 router.get('/orders',userMiddleware.checkSession,orderController.getOrders)
 router.patch('/orders/:orderId/items/:productId/cancel', userMiddlewares.checkSession, orderController.cancelOrder);
+
+router.get('/wishlist', userMiddlewares.checkSession,userMiddleware.errorHandler, wishlistController.getWishlist);
+router.post('/wishlist/add', userMiddlewares.checkSession,userMiddleware.errorHandler, wishlistController.addToWishlist);
 
 router.get('/wallet', userMiddlewares.checkSession, walletController.getWallet);
 router.post('/orders/:orderId/items/:productId/return', userMiddlewares.checkSession,userMiddleware.errorHandler,orderController.requestReturnItem);
