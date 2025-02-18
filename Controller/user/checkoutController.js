@@ -4,6 +4,24 @@ import addressSchema from '../../model/addressModel.js';
 import productSchema from '../../model/productModel.js';
 import Coupon from '../../model/couponModel.js'
 import razorpay from '../../utils/razorpay.js';
+import crypto from 'crypto';
+
+
+// Helper function (keep this at the top of the file)
+function calculateProportionalDiscounts(items, totalDiscount) {
+    const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    return items.map(item => {
+        const itemTotal = item.price * item.quantity;
+        const proportionalRatio = itemTotal / totalAmount;
+        const itemDiscount = totalDiscount * proportionalRatio;
+        const discountPerUnit = itemDiscount / item.quantity;
+        return {
+            ...item,
+            discountedPrice: Number((item.price - discountPerUnit).toFixed(2)),
+            subtotal: Number((item.quantity * (item.price - discountPerUnit)).toFixed(2))
+        };
+    });
+}
 
 
 const getCheckoutPage = async (req, res) => {
@@ -137,7 +155,7 @@ const placeOrder = async (req, res) => {
         if (paymentMethod === 'cod' && cartTotal > 1000) {
             return res.status(400).json({
                 success: false,
-                message: 'Cash on Delivery is not available for orders above ₹5,00,000. Please choose a different payment method.'
+                message: 'Cash on Delivery is not available for orders above ₹1000. Please choose a different payment method.'
             });
         }
 
@@ -411,7 +429,7 @@ const createRazorpayOrder = async (req, res, next) => {
         const userId = req.session.user;
         const { addressId, couponCode } = req.body;
 
-        //get cart and validate
+        // Get cart and validate
         const cart = await cartSchema.findOne({ userId })
             .populate('items.productId');
 
@@ -422,98 +440,104 @@ const createRazorpayOrder = async (req, res, next) => {
             });
         }
 
-        //get address
+        // Get address
         const address = await addressSchema.findOne({
-            _id:addressId,
+            _id: addressId,
             userId
         });
 
-        if(!address){
+        if (!address) {
             return res.status(400).json({
                 success: false,
                 message: 'Delivery address not found'
             });
         }
 
-          // Calculate total with coupon discount
-          const cartTotal = cart.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-          let couponDiscount = 0;
-          if (couponCode) {
-              const coupon = await Coupon.findOne({ code: couponCode });
-              if (coupon) {
-                  couponDiscount = Math.min(
-                      (cartTotal * coupon.discountPercentage) / 100,
-                      coupon.maximumDiscount || Infinity
-                  );
-              }
-          }
-          const finalAmount = cartTotal - couponDiscount;
-
-          //create razorpay order
-          const razorpayOrder = await razorpay.orders.create({
-            amount:Math.round(finalAmount*100),
-            currency:"INR",
-            receipt:`order_${Date.now()}`
-          });
-
-          //prepare initial items with basic info
-          const initialItems = cart.items.map(item=>({
-            product:item.productId._id,
-            quantity:item.quantity,
-            price:item.price
-          }));
-
-          //calculte proportionl discounts and prepare order items
-          const discountedItems = calculateProportionalDiscounts(initialItems, couponDiscount);
-          const orderItems = discountedItems.map(item => ({
-              ...item,
-              order: {
-                  status: 'processing',
-                  statusHistory: [{
-                      status: 'processing',
-                      date: new Date(),
-                      comment: 'payment completed successfully'
-                  }]
-              }
-          }));
-
-          //store order details in session
-          req.session.pendingOrder={
-            razorpayOrderId:razorpayOrder.id,
-            orderData:{
-                userId,
-                items:orderItems,
-                totalAmount:finalAmount,
-                coupon:couponCode?{
-                    code:couponCode,
-                    discount:couponDiscount
-                }:{},
-                shippingAddress:{
-                    fullName:address.fullName,
-                    mobileNumber:address.mobileNumber,
-                    addressLine1:address.addressLine1,
-                    addressLine2:address.addressLine2,
-                    city:address.city,
-                    state:address.state,
-                    pincode:address.pincode
-                }
+        // Calculate total with coupon discount
+        const cartTotal = cart.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        let couponDiscount = 0;
+        if (couponCode) {
+            const coupon = await Coupon.findOne({ code: couponCode });
+            if (coupon) {
+                couponDiscount = Math.min(
+                    (cartTotal * coupon.discountPercentage) / 100,
+                    coupon.maximumDiscount || Infinity
+                );
             }
-          };
+        }
+        const finalAmount = cartTotal - couponDiscount;
 
-          res.json({
-            success: true,
-            key: process.env.RAZORPAY_KEY_ID,
-            order: razorpayOrder
+        // Create razorpay order
+        const razorpayOrder = await razorpay.orders.create({
+            amount: Math.round(finalAmount * 100),
+            currency: "INR",
+            receipt: `order_${Date.now()}`
         });
 
+        // Prepare initial items with all required fields including size
+        const initialItems = cart.items.map(item => ({
+            product: item.productId._id,
+            quantity: item.quantity,
+            price: item.price,
+            size: item.size,  // Include size from cart item
+            subtotal: item.quantity * item.price  // Add subtotal as it's required
+        }));
 
-    }catch(error){
-        next(error)
+        // Calculate proportional discounts and prepare order items
+        const discountedItems = calculateProportionalDiscounts(initialItems, couponDiscount);
+        const orderItems = discountedItems.map(item => ({
+            ...item,
+            order: {
+                status: 'processing',
+                statusHistory: [{
+                    status: 'processing',
+                    date: new Date(),
+                    comment: 'Order initiated'
+                }]
+            }
+        }));
+
+        // Store order details in session
+        req.session.pendingOrder = {
+            razorpayOrderId: razorpayOrder.id,
+            orderData: {
+                userId,
+                items: orderItems,  // Now includes size for each item
+                totalAmount: finalAmount,
+                coupon: couponCode ? {
+                    code: couponCode,
+                    discount: couponDiscount
+                } : {},
+                shippingAddress: {
+                    fullName: address.fullName,
+                    mobileNumber: address.mobileNumber,
+                    addressLine1: address.addressLine1,
+                    addressLine2: address.addressLine2,
+                    city: address.city,
+                    state: address.state,
+                    pincode: address.pincode
+                },
+                payment: {
+                    method: 'razorpay',
+                    paymentStatus: 'processing'
+                }
+            }
+        };
+
+        res.json({
+            success: true,
+            key: process.env.RAZORPAY_KEY_ID,
+            order: razorpayOrder,
+            orderId: razorpayOrder.id
+        });
+
+    } catch (error) {
+        next(error);
     }
 };
 
 
-const verifyPayment= async (req, res,next) => {
+const verifyPayment = async (req, res, next) => {
     try {
         const userId = req.session.user;
         const {
@@ -613,11 +637,18 @@ const verifyPayment= async (req, res,next) => {
             }
         });
 
-        // Update product stock
+        // Update product stock with correct schema structure
         for (const item of cart.items) {
-            await productSchema.findByIdAndUpdate(
-                item.productId._id,
-                { $inc: { stock: -item.quantity } }
+            await productSchema.findOneAndUpdate(
+                {
+                    _id: item.productId._id,
+                    'size.size': item.size
+                },
+                {
+                    $inc: {
+                        'size.$.stock': -item.quantity
+                    }
+                }
             );
         }
 
@@ -638,7 +669,7 @@ const verifyPayment= async (req, res,next) => {
         });
 
     } catch (error) {
-        next(error)
+        next(error);
     }
 };
 
