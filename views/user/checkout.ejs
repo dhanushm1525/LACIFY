@@ -631,7 +631,7 @@
                   throw new Error('Minimum order amount should be ₹1');
               }
 
-              if (finalAmount > 500000) {
+              if (finalAmount > 1000) {
                   throw new Error('Maximum order amount cannot exceed ₹5,00,000');
               }
 
@@ -764,7 +764,7 @@
               const codOption = document.getElementById('codOption');
               const finalTotal = parseFloat(codOption.dataset.finalTotal || 0);
               
-              if (this.value === 'cod' && finalTotal > 500000) {
+              if (this.value === 'cod' && finalTotal > 1000) {
                   alert('Cash on Delivery is not available for orders above ₹5,00,000');
                   this.checked = false;
               }
@@ -807,7 +807,7 @@
           const codAvailability = document.getElementById('codAvailability');
           const codMessage = document.getElementById('codMessage');
 
-          if (finalAmount > 10000000) {
+          if (finalAmount > 1000) {
               codOption.classList.add('opacity-60');
               codOption.classList.remove('hover:bg-gray-50');
               codPayment.disabled = true;

@@ -177,13 +177,13 @@ const handleReturnRequest = async (req,res,next)=>{
         const { orderId , productId} = req.params;
         const {returnStatus , adminComment}= req.body;
 
-        const order=  await orderSchema.findById(orderId)
-        .populate('items.product');
+        const order = await orderSchema.findById(orderId)
+            .populate('items.product');
 
         if(!order){
             return res.status(404).json({
                 success:false,
-                messaage:'Order not found'
+                message:'Order not found'
             });
         }
 
@@ -191,110 +191,94 @@ const handleReturnRequest = async (req,res,next)=>{
             item.product._id.toString()===productId
         );
 
-
         if(!item){
             return res.status(404).json({
                 success:false,
-                messaage:'item not found'
+                message:'Item not found'
             });
         }
-
-        item.return.status = returnStatus;
-        item.return.adminComment = adminComment;
-        item.return.isReturnAccepted = returnStatus==='approved';
 
         if(returnStatus === 'approved'){
-            item.order.status === 'returned';
-            item.order.statusHistory.push({
-                status:'returned',
-                date:new Date(),
-                comment:`return approved by admin:${adminComment}`
-            });
-
-            //restore stock
-             // Get the product
-         const product = await productSchema.findById(productId);
-        if (!product) {
-           return res.status(404).json({
-             success: false,
-         message: 'Product not found'
-            });
+            // Update only the necessary fields
+            const updateResult = await orderSchema.findOneAndUpdate(
+                { 
+                    _id: orderId,
+                    'items.product': productId 
+                },
+                {
+                    $set: {
+                        'items.$.order.status': 'returned',
+                        'items.$.return.status': returnStatus,
+                        'items.$.return.adminComment': adminComment,
+                        'items.$.return.isReturnAccepted': true,
+                        'payment.paymentStatus': 'refunded'
+                    },
+                    $push: {
+                        'items.$.order.statusHistory': {
+                            status: 'returned',
+                            date: new Date(),
+                            comment: `return approved by admin:${adminComment}`
+                        }
                     }
-         // Get the size from the order history
-        const orderSize = item.size ;
-        
+                },
+                { new: true }
+            );
 
-        // Find the specific size in the product's size array
-        const sizeIndex = product.size.findIndex(s => s.size === orderSize);
-        
+            // Update product stock
+            await productSchema.findOneAndUpdate(
+                { 
+                    _id: productId,
+                    'size.size': item.size 
+                },
+                { 
+                    $inc: { 'size.$.stock': item.quantity }
+                }
+            );
 
-        if (sizeIndex === -1) {
-            return res.status(404).json({
-                success: false,
-                message: 'Size not found in product'
-            });
+            // Process refund with the specific item
+            const refundItem = {
+                subtotal: item.subtotal,
+                quantity: item.quantity,
+                size: item.size
+            };
+            
+            await processItemRefund(order, refundItem);
         }
 
-        // Calculate new stock for the specific size
-        const currentStock = product.size[sizeIndex].stock;
-        const quantityToAdd = Number(item.quantity);
-        const newStock = currentStock + quantityToAdd;
-
-       
-
-        // Update the stock for the specific size
-        product.size[sizeIndex].stock = newStock;
-        await product.save();
-
-
-        order.payment.paymentStatus = 'refunded';
-        //process refund
-        await processItemRefund(order,item);
-        }else if(returnStatus==='rejected'){
-            item.order.status = 'delivered';
-            item.order.statusHistory.push({
-                status: 'delivered',
-                date: new Date(),
-                comment: `Return rejected by admin: ${adminComment}`
-            });
-
-            //set payment status to completed 
-            order.payment.paymentStatus = 'completed';
-
-        }
-
-        await order.save();
         res.json({
-            success:true,
-            messaage:'Return request handled successfully'
+            success: true,
+            message: 'Return request handled successfully'
         });
 
     }catch(error){
-        next(error)
+        console.error('Error in handleReturnRequest:', error);
+        next(error);
     }
 };
 
+//helper function to process refund
+async function processItemRefund(order, refundItem){
+    try {
+        const wallet = await Wallet.findOne({userId:order.userId});
 
-//heper function to process rfund
+        if(!wallet){
+            throw new Error('User wallet not found');
+        }
 
-async function processItemRefund(order){
-    const wallet = await Wallet.findOne({userId:order.userId});
+        const refundAmount = refundItem.subtotal;
+        wallet.balance += refundAmount;
+        wallet.transactions.push({
+            type:'credit',
+            amount:refundAmount,
+            description:`Refund for item in order #${order.orderCode}`,
+            orderId:order._id
+        });
 
-    if(!wallet){
-        throw new error('User wallet not found');
+        await wallet.save();
+    } catch(error) {
+        console.error('Error processing refund:', error);
+        throw error;
     }
-
-    const refundAmount = item.subtotal;
-    wallet.balance+=refundAmount;
-    wallet.transactions.push({
-        type:'credit',
-        amount:refundAmount,
-        description:`Refund for item in order #${order.orderCode}`,
-        orderId:order._id
-    });
-
-    await wallet.save();
-    order.payment.paymentStatus = 'refunded';
 }
 
 export default {

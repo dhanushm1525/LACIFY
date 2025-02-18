@@ -11,6 +11,7 @@ import checkoutController from '../Controller/user/checkoutController.js';
 import orderController from '../Controller/user/orderController.js';
 import walletController from '../Controller/user/walletController.js';
 import wishlistController from '../Controller/user/wishlistController.js';
+import couponController from '../Controller/user/couponController.js';
 
 const router = Router()
 
@@ -68,6 +69,15 @@ router.delete('/wishlist/remove/:productId', userMiddlewares.checkSession,userMi
 
 router.get('/wallet', userMiddlewares.checkSession, walletController.getWallet);
 router.post('/orders/:orderId/items/:productId/return', userMiddlewares.checkSession,userMiddleware.errorHandler,orderController.requestReturnItem);
+
+router.post('/checkout/apply-coupon', userMiddlewares.checkSession,userMiddleware.errorHandler, checkoutController.applyCoupon);
+router.post('/checkout/remove-coupon', userMiddlewares.checkSession, userMiddleware.errorHandler,checkoutController.removeCoupon);
+router.get('/checkout/available-coupons', userMiddlewares.checkSession,userMiddleware.errorHandler, checkoutController.getAvailableCoupons);
+router.get('/coupons', userMiddlewares.checkSession,userMiddleware.errorHandler, couponController.getCoupons);
+
+router.post('/checkout/create-razorpay-order', userMiddlewares.checkSession,userMiddleware.errorHandler, checkoutController.createRazorpayOrder);
+router.post('/checkout/verify-payment', userMiddlewares.checkSession,userMiddleware.errorHandler, checkoutController.verifyPayment);
+router.post('/checkout/payment-failed', userMiddlewares.checkSession,userMiddleware.errorHandler, checkoutController.handlePaymentFailure);
 
 
 export default router;
