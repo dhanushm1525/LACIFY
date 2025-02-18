@@ -21,6 +21,11 @@ const categorySchema = new mongoose.Schema(
         isActive:{
             type:Boolean,
             default:true
+        },
+        offer: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Offer',
+            default: null
         }
     },
     {

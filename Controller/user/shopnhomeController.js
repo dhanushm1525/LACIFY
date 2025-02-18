@@ -1,5 +1,6 @@
 import Product from '../../model/productModel.js';
 import Category from '../../model/categoryModel.js';
+import Offer from '../../model/offerModel.js';
 
 const getHome = async (req, res) => {
     try {
@@ -45,7 +46,34 @@ const getShop = async (req, res) => {
         const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : '';
         const stock = req.query.stock || '';
 
-     
+        // Get active offers first
+        const activeOffers = await Offer.find({
+            startDate: { $lte: new Date() },
+            endDate: { $gte: new Date() },
+            status: 'active'
+        }).populate('categoryId');
+        
+        // Create maps for both product and category offers
+        const productOfferMap = new Map();
+        const categoryOfferMap = new Map();
+
+        activeOffers.forEach(offer => {
+            if (offer.offerType === 'product') {
+                offer.productIds.forEach(productId => {
+                    // If multiple offers exist for same product, keep the highest discount
+                    const existingOffer = productOfferMap.get(productId.toString());
+                    if (!existingOffer || existingOffer.discount < offer.discount) {
+                        productOfferMap.set(productId.toString(), offer);
+                    }
+                });
+            } else if (offer.offerType === 'category' && offer.categoryId) {
+                // If multiple offers exist for same category, keep the highest discount
+                const existingOffer = categoryOfferMap.get(offer.categoryId.toString());
+                if (!existingOffer || existingOffer.discount < offer.discount) {
+                    categoryOfferMap.set(offer.categoryId.toString(), offer);
+                }
+            }
+        });
 
         // Get active categories
         const activeCategories = await Category.find({ isActive: true }).distinct('_id');
@@ -66,7 +94,7 @@ const getShop = async (req, res) => {
 
         // Add size filter
         if (size) {
-            query.size = { $in: [size] };
+            query.size = { $in: [size.size] };
            
         }
 
@@ -108,11 +136,50 @@ const getShop = async (req, res) => {
 
         // Fetch products
         const products = await Product.find(query)
+            .populate('categoriesId')
             .sort(sortOptions)
             .skip((page - 1) * limit)
             .limit(limit);
 
-       
+        // Process products and apply offers
+        const productsWithPrices = products.map(product => {
+            const productData = product.toObject();
+            const productOffer = productOfferMap.get(product._id.toString());
+            const categoryOffer = product.categoriesId ? 
+                categoryOfferMap.get(product.categoriesId.toString()) : null;
+            
+            let finalPrice = product.price;
+            let appliedDiscount = 0;
+            let appliedOffer = null;
+
+            // Check product-specific offer
+            if (productOffer) {
+                const discountAmount = (product.price * productOffer.discount) / 100;
+                if (discountAmount > appliedDiscount) {
+                    appliedDiscount = discountAmount;
+                    appliedOffer = productOffer;
+                }
+            }
+
+            // Check category offer
+            if (categoryOffer) {
+                const discountAmount = (product.price * categoryOffer.discount) / 100;
+                if (discountAmount > appliedDiscount) {
+                    appliedDiscount = discountAmount;
+                    appliedOffer = categoryOffer;
+                }
+            }
+
+            // Calculate final price
+            finalPrice = Math.round(product.price - appliedDiscount);
+
+            return {
+                ...productData,
+                offerPrice: finalPrice,
+                offerApplied: finalPrice < product.price,
+                discountPercentage: appliedOffer ? appliedOffer.discount : 0
+            };
+        });
 
         const pagination = {
             currentPage: page,
@@ -124,14 +191,14 @@ const getShop = async (req, res) => {
         // Handle AJAX requests
         if (req.xhr) {
             return res.json({
-                products,
+                products: productsWithPrices,
                 pagination
             });
         }
 
         // Regular page load
         res.render('user/shop', {
-            products,
+            products: productsWithPrices,
             pagination,
             search,
             sort
@@ -142,8 +209,14 @@ const getShop = async (req, res) => {
         if (req.xhr) {
             return res.status(500).json({ error: 'Error loading products' });
         }
-        res.status(500).render('error', {
-            message: 'Error loading shop page',
+        res.render('user/shop', {
+            products: [],
+            pagination: { 
+                currentPage: 1, 
+                totalPages: 1, 
+                hasNextPage: false, 
+                hasPrevPage: false 
+            },
             search: '',
             sort: 'default'
         });

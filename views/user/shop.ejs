@@ -176,12 +176,12 @@
                   <img 
                     src="<%= product.imageUrl[0] %>" 
                     alt="<%= product.productName %>"
-                    class="w-full h-full object-cover hover:scale-105 transition-transform duration-300 <%= product.stock === 0 ? 'opacity-60' : '' %>"
+                    class="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                   >
-                  <% if (product.discountPrice < product.price) { %>
+                  <% if (product.offerApplied && product.offerPrice) { %>
                     <div class="absolute top-2 right-2 bg-red-500 text-white px-2 py-0.5 rounded text-xs font-medium">
-                      -<%= Math.round((product.price - product.discountPrice) / product.price * 100) %>%
+                      -<%= Math.round((product.price - product.offerPrice) / product.price * 100) %>%
                     </div>
                   <% } %>
                   <% if (product.stock === 0) { %>
@@ -199,9 +199,14 @@
                     <%= product.productName %>
                   </h2>
                   <div class="flex items-baseline gap-1 mt-1">
-                    <span class="text-base font-bold text-gray-900">₹<%= product.discountPrice %></span>
-                    <% if (product.discountPrice < product.price) { %>
+                    <% if (product.offerApplied) { %>
+                      <span class="text-base font-bold text-gray-900">₹<%= product.offerPrice %></span>
                       <span class="text-xs text-gray-500 line-through">₹<%= product.price %></span>
+                      <span class="text-xs text-red-500">
+                        -<%= product.discountPercentage %>%
+                      </span>
+                    <% } else { %>
+                      <span class="text-base font-bold text-gray-900">₹<%= product.price %></span>
                     <% } %>
                   </div>
                 </div>
@@ -279,9 +284,9 @@
                               class="w-full h-full object-cover hover:scale-105 transition-transform duration-300 ${product.stock === 0 ? 'opacity-60' : ''}"
                               loading="lazy"
                           >
-                          ${product.discountPrice < product.price ? `
+                          ${product.offerApplied && product.offerPrice ? `
                               <div class="absolute top-2 right-2 bg-red-500 text-white px-2 py-0.5 rounded text-xs font-medium">
-                                  -${Math.round((product.price - product.discountPrice) / product.price * 100)}%
+                                  -${Math.round((product.price - product.offerPrice) / product.price * 100)}%
                               </div>
                           ` : ''}
                           ${product.stock === 0 ? `
@@ -297,10 +302,12 @@
                               ${product.productName}
                           </h2>
                           <div class="flex items-baseline gap-1 mt-1">
-                              <span class="text-base font-bold text-gray-900">₹${product.price}</span>
-                              ${product.discountPrice < product.price ? `
+                              ${product.offerApplied && product.offerPrice ? `
+                                  <span class="text-base font-bold text-gray-900">₹${product.offerPrice}</span>
                                   <span class="text-xs text-gray-500 line-through">₹${product.price}</span>
-                              ` : ''}
+                              ` : `
+                                  <span class="text-base font-bold text-gray-900">₹${product.price}</span>
+                              `}
                           </div>
                       </div>
                   </a>
