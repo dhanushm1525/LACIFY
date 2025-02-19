@@ -40,8 +40,23 @@ const getOrders = async (req,res)=>{
         .skip(skip)
         .limit(limit);
 
+        // Process orders to handle null products
+        const processedOrders = orders.map(order => {
+            const orderObj = order.toObject();
+            orderObj.items = orderObj.items.map(item => ({
+                ...item,
+                product: item.product || {
+                    _id: 'unavailable',
+                    productName: 'Product Unavailable',
+                    imageUrl: ['/images/placeholder.jpg'],
+                    price: item.price || 0
+                }
+            }));
+            return orderObj;
+        });
+
         res.render('admin/orders',{
-            orders,
+            orders: processedOrders,
             currentPage:page,
             totalPages,
             hasNextPage:page<totalPages,

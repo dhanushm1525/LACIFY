@@ -8,6 +8,7 @@ import productController from '../Controller/admin/productController.js'
 import orderController from '../Controller/admin/orderController.js'
 import couponController from '../Controller/admin/couponController.js'
 import offerController from '../Controller/admin/offerController.js'
+import reportController from '../Controller/admin/reportController.js'
 const router = Router()
 
 
@@ -44,6 +45,11 @@ router.get('/offers', adminMiddleware.checkSession,adminMiddleware.errorHandler,
 router.post('/offers', adminMiddleware.checkSession,adminMiddleware.errorHandler, offerController.createOffer);
 router.put('/offers/:offerId', adminMiddleware.checkSession,adminMiddleware.errorHandler, offerController.updateOffer);
 router.delete('/offers/:offerId', adminMiddleware.checkSession,adminMiddleware.errorHandler, offerController.deleteOffer);
+
+
+router.get('/sales-report', adminMiddleware.checkSession,adminMiddleware.errorHandler, reportController.getSalesReport);
+router.get('/sales-report/download-excel', adminMiddleware.checkSession,adminMiddleware.errorHandler, reportController.downloadExcel);
+router.get('/sales-report/download-pdf', adminMiddleware.checkSession,adminMiddleware.errorHandler, reportController.downloadPDF);
 export default router
 
 
