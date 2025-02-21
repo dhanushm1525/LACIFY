@@ -113,10 +113,8 @@ const getCheckoutPage = async (req, res) => {
 
 const placeOrder = async (req, res) => {
     try {
-
-        const { addressId, paymentMethod ,couponCode} = req.body;
+        const { addressId, paymentMethod, couponCode } = req.body;
         const userId = req.session.user;
-
 
         // Validate inputs
         if (!addressId || !paymentMethod) {
@@ -126,19 +124,13 @@ const placeOrder = async (req, res) => {
             });
         }
 
-        //get cart and validate
+        // Get cart and validate
         const cart = await cartSchema.findOne({ userId })
             .populate({
                 path: 'items.productId',
                 model: 'Product',
                 select: 'productName size price'
             });
-
-        // console.log('Cart items:', cart.items.map(item => ({
-        //     productName: item.productId.productName,
-        //     size: item.size,  // Check if this exists
-        //     quantity: item.quantity
-        // })));
 
         if (!cart || cart.items.length === 0) {
             return res.status(400).json({
@@ -147,33 +139,45 @@ const placeOrder = async (req, res) => {
             });
         }
 
-        //calculate the total amount
+        // Calculate the total amount
         const cartTotal = cart.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        
+        // Calculate coupon discount
+        let couponDiscount = 0;
+        if (couponCode) {
+            const coupon = await Coupon.findOne({ code: couponCode });
+            if (coupon) {
+                couponDiscount = Math.min(
+                    (cartTotal * coupon.discountPercentage) / 100,
+                    coupon.maximumDiscount || Infinity
+                );
+            }
+        }
+        const finalAmount = cartTotal - couponDiscount;
 
-
-        // validate COD paymernt method
-        if (paymentMethod === 'cod' && cartTotal > 1000) {
+        // Validate COD payment method
+        if (paymentMethod === 'cod' && finalAmount > 1000) {
             return res.status(400).json({
                 success: false,
                 message: 'Cash on Delivery is not available for orders above ₹1000. Please choose a different payment method.'
             });
         }
 
-
-        //prepare initial items with basic info
+        // Prepare initial items with basic info
         const initialItems = cart.items.map(item => ({
             product: item.productId._id,
             quantity: item.quantity,
             price: item.price,
-            size: item.size
-
+            size: item.size,
+            subtotal: item.quantity * item.price
         }));
 
+        // Calculate proportional discounts
+        const discountedItems = calculateProportionalDiscounts(initialItems, couponDiscount);
 
-        //add order status and return fields to each item
-        const orderItems = initialItems.map(item => ({
+        // Add order status and return fields to each item
+        const orderItems = discountedItems.map(item => ({
             ...item,
-            subtotal: item.quantity * item.price,
             order: {
                 status: paymentMethod === 'cod' ? 'processing' : 'pending',
                 statusHistory: [{
@@ -209,8 +213,8 @@ const placeOrder = async (req, res) => {
 
         const order = await orderSchema.create({
             userId,
-            items: orderItems,
-            totalAmount: Math.round(cartTotal),
+            items: orderItems,  // Now using discounted items
+            totalAmount: Math.round(finalAmount), // Using final amount with discount
 
             shippingAddress: {
                 fullName: address.fullName,
@@ -428,6 +432,9 @@ const createRazorpayOrder = async (req, res, next) => {
     try {
         const userId = req.session.user;
         const { addressId, couponCode } = req.body;
+
+        console.log(couponCode);
+        
 
         // Get cart and validate
         const cart = await cartSchema.findOne({ userId })

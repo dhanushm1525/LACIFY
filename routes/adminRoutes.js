@@ -14,7 +14,8 @@ const router = Router()
 
 router.get('/login', adminMiddleware.isLogin, adminMiddleware.errorHandler, authController.getAdmin)
 router.post('/login', adminMiddleware.errorHandler, authController.postAdmin)
-router.get('/dashboard', adminMiddleware.checkSession, adminMiddleware.errorHandler, dashboardController.getDashboard)
+router.get('/dashboard', adminMiddleware.checkSession,adminMiddleware.errorHandler, dashboardController.getDashboard);
+router.get('/dashboard/data', adminMiddleware.checkSession,adminMiddleware.errorHandler, dashboardController.getDashboardData);
 router.get('/userList', adminMiddleware.checkSession, adminMiddleware.errorHandler, userController.getUserList)
 router.post('/user/:id/toggle-block', adminMiddleware.checkSession, adminMiddleware.errorHandler, userController.getToggle)
 router.get('/logout', adminMiddleware.checkSession, adminMiddleware.errorHandler, authController.getLogout)

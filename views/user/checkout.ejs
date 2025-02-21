@@ -203,7 +203,7 @@
                   </button>
                 </div>
               </div>
-            </div> 
+            </div>
 
             <!-- Price Breakdown -->
             <div class="space-y-3">
@@ -368,625 +368,628 @@
     </div>
 
     <script>
-      let appliedCoupon = null;
-      let currentDiscount = 0;
-      const cartTotal = <%= total %>;
-
-      function openCouponModal() {
-          fetchCoupons();
-          document.getElementById('couponModal').classList.remove('hidden');
-      }
-
-      function closeCouponModal() {
-          document.getElementById('couponModal').classList.add('hidden');
-      }
-
-      async function fetchCoupons() {
-          try {
-              const response = await fetch('/checkout/available-coupons');
-              const data = await response.json();
-
-              if (data.success) {
-                  renderCoupons(data.coupons);
-              } else {
-                  throw new Error(data.message);
-              }
-          } catch (error) {
-              console.error('Error fetching coupons:', error);
-              await showAlert('error', 'Failed to load coupons');
-          }
-      }
-
-      function renderCoupons(coupons) {
-          const activeCouponsList = document.getElementById('activeCouponsList');
-          activeCouponsList.innerHTML = '';
-
-          // Separate applicable and non-applicable coupons
-          const applicableCoupons = coupons.filter(coupon => coupon.isApplicable);
-          const nonApplicableCoupons = coupons.filter(coupon => !coupon.isApplicable);
-
-          // Render applicable coupons first with a header
-          if (applicableCoupons.length > 0) {
-              activeCouponsList.innerHTML += `
-                  <div class="mb-4">
-                      <h4 class="text-sm font-medium text-green-600 mb-3">Available for You</h4>
-                      <div class="space-y-3">
-                          ${applicableCoupons.map(coupon =>
-                              createCouponElement(coupon, true).outerHTML
-                          ).join('')}
-                      </div>
-                  </div>
-              `;
-          }
-
-          // Render non-applicable coupons with a header
-          if (nonApplicableCoupons.length > 0) {
-              activeCouponsList.innerHTML += `
-                  <div>
-                      ${applicableCoupons.length > 0 ? '<hr class="my-4">' : ''}
-                      <h4 class="text-sm font-medium text-gray-600 mb-3">Other Coupons</h4>
-                      <div class="space-y-3">
-                          ${nonApplicableCoupons.map(coupon =>
-                              createCouponElement(coupon, false).outerHTML
-                          ).join('')}
-                      </div>
-                  </div>
-              `;
-          }
-
-          // Show "No coupons" message if both sections are empty
-          if (!applicableCoupons.length && !nonApplicableCoupons.length) {
-              activeCouponsList.innerHTML = `
-                  <div class="text-gray-500 text-center py-3">
-                      No coupons available
-                  </div>
-              `;
-          }
-      }
-
-      function createCouponElement(coupon, isApplicable) {
-          const div = document.createElement('div');
-          div.className = `p-4 border rounded-lg ${isApplicable ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`;
-
-          div.innerHTML = `
-              <div class="flex justify-between items-start">
-                  <div>
-                      <h3 class="font-medium ${isApplicable ? 'text-green-700' : 'text-gray-700'}">${coupon.code}</h3>
-                      <p class="text-sm text-gray-600 mt-1">
-                          ${coupon.discountPercentage}% OFF
-                          ${coupon.maximumDiscount ? ` up to ₹${coupon.maximumDiscount}` : ''}
-                      </p>
-                      <p class="text-xs text-gray-500 mt-1">
-                          Min purchase: ₹${coupon.minimumPurchase}
-                      </p>
-                      <p class="text-xs text-gray-500">
-                          Valid till: ${new Date(coupon.expiryDate).toLocaleDateString()}
-                      </p>
-                  </div>
-                  ${isApplicable ? `
-                      <button onclick="applyCoupon('${coupon.code}')"
-                              class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                          Apply
-                      </button>
-                  ` : `
-                      <span class="text-xs text-gray-500 italic">
-                          Not applicable
-                      </span>
-                  `}
-              </div>
-          `;
-
-          return div;
-      }
-
-      function getCouponInactiveReason(coupon) {
-          if (coupon.minimumPurchase > cartTotal) return `Min. purchase ₹${coupon.minimumPurchase}`;
-          if (coupon.totalCoupon && coupon.usedCouponCount >= coupon.totalCoupon) return 'Coupon limit reached';
-          return 'Not applicable';
-      }
-
-      // Add this function to manage the Apply Coupon button state
-      function toggleApplyCouponButton(disabled) {
-          const applyCouponButton = document.querySelector('button[onclick="openCouponModal()"]');
-          if (applyCouponButton) {
-              applyCouponButton.disabled = disabled;
-              if (disabled) {
-                  applyCouponButton.classList.add('opacity-50', 'cursor-not-allowed');
-                  applyCouponButton.classList.remove('hover:bg-gray-200');
-              } else {
-                  applyCouponButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                  applyCouponButton.classList.add('hover:bg-gray-200');
-              }
-          }
-      }
-
-      async function applyCoupon(couponCode) {
-          try {
-
-              // Check for empty or whitespace-only coupon code
-              if (!couponCode || !couponCode.trim()) {
-                  await showAlert('error', 'Please enter a valid coupon code');
-                  return;
-              }
-
-              // Remove leading and trailing spaces
-              const trimmedCode = couponCode.trim().toUpperCase();
-
-
-              const response = await fetch('/checkout/apply-coupon', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({ code: trimmedCode })
-              });
-
-              const data = await response.json();
-
-              if (data.success) {
-
-                  // Update UI elements
-                  const discountRow = document.getElementById('discountRow');
-                  const discountAmount = document.getElementById('discountAmount');
-                  const finalTotal = document.getElementById('finalTotal');
-                  const appliedCouponInfo = document.getElementById('appliedCouponInfo');
-                  const appliedCouponCode = document.getElementById('appliedCouponCode');
-                  const discountInfo = document.getElementById('discountInfo');
-
-                  // Check if all required elements exist
-                  if (!discountRow || !discountAmount || !finalTotal || !appliedCouponInfo ||
-                      !appliedCouponCode || !discountInfo) {
-                      console.error('Some required elements are missing');
-                      return;
-                  }
-
-                  // Update discount and coupon info
-                  discountRow.classList.remove('hidden');
-                  discountAmount.textContent = data.discount.toFixed(2);
-                  finalTotal.textContent = (cartTotal - data.discount).toFixed(2);
-
-                  appliedCouponInfo.classList.remove('hidden');
-                  appliedCouponCode.textContent = trimmedCode;
-                  discountInfo.textContent = `₹${data.discount.toFixed(2)} discount applied`;
-
-                  // Close coupon modal
-                  closeCouponModal();
-
-                  // Show success message
-                  await showAlert('success', 'Coupon applied successfully!');
-              } else {
-                  throw new Error(data.message || 'Failed to apply coupon');
-              }
-          } catch (error) {
-              console.error('Error in applyCoupon:', error);
-          }
-      }
-
-      async function removeCoupon() {
-          try {
-
-              // Reset UI elements
-              const discountRow = document.getElementById('discountRow');
-              const discountAmount = document.getElementById('discountAmount');
-              const finalTotal = document.getElementById('finalTotal');
-              const appliedCouponInfo = document.getElementById('appliedCouponInfo');
-              const subtotalElement = document.getElementById('subtotal');
-
-                  // Get the original subtotal
-                  const originalTotal = parseFloat(subtotalElement.textContent);
-
-                  // Update UI elements
-                  discountRow.classList.add('hidden');
-                  discountAmount.textContent = '0.00';
-                  finalTotal.textContent = originalTotal.toFixed(2);
-                  appliedCouponInfo.classList.add('hidden');
-                  
-                  // Important: Clear the appliedCouponCode content
-                  if (appliedCouponCode) {
-                      appliedCouponCode.textContent = '';
-                      appliedCouponCode.setAttribute('data-coupon', ''); // Also clear data attribute if exists
-                  }
-
-              // Update payment methods based on original total
-              updatePaymentMethodsAfterCoupon(originalTotal);
-
-              // Show success message
-              await showAlert('success', 'Coupon removed successfully');
-          } catch (error) {
-              console.error('Error removing coupon:', error);
-              await showAlert('error', error.message || 'Failed to remove coupon. Please try again.');
-          }
-      }
-
-      function updateTotalWithDiscount(discount) {
-          const finalTotalElement = document.getElementById('finalTotal');
-          const discountElement = document.getElementById('discountAmount');
-          const discountRow = document.getElementById('discountRow');
-
-          if (discount > 0) {
-              discountRow.classList.remove('hidden');
-              discountElement.textContent = discount.toFixed(2);
-              finalTotalElement.textContent = (cartTotal - discount).toFixed(2);
-          } else {
-              discountRow.classList.add('hidden');
-              discountElement.textContent = '0';
-              finalTotalElement.textContent = cartTotal.toFixed(2);
-          }
-      }
-
-      // Add this function to get the current total with discount
-      function getDiscountedTotal() {
-          const subtotal = parseFloat(document.getElementById('subtotal').textContent);
-          const discountAmount = parseFloat(document.getElementById('discountAmount').textContent) || 0;
-          return subtotal - discountAmount;
-      }
-
-      // Update createRazorpayOrder function
-      async function createRazorpayOrder(addressId) {
-          try {
-              const couponCode = document.getElementById('appliedCouponCode')?.textContent;
-              
-              const response = await fetch('/checkout/create-razorpay-order', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                      addressId: addressId,
-                      couponCode: couponCode || null,
-                      paymentMethod: 'razorpay'
-                  })
-              });
-
-              const data = await response.json();
-              if (!data.success) {
-                  throw new Error(data.message);
-              }
-              return data;
-          } catch (error) {
-              console.error('Error creating Razorpay order:', error);
-              throw error;
-          }
-      }
-
-      // Update wallet payment function
-      async function processWalletPayment(addressId) {
-          try {
-              const finalAmount = getDiscountedTotal();
-
-              const response = await fetch('/checkout/wallet-payment', {
-                  method: 'POST',
-                  headers: {
-                      'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                      addressId: addressId,
-                      amount: finalAmount,
-                      couponCode: document.getElementById('appliedCouponCode')?.textContent
-                  })
-              });
-
-              const data = await response.json();
-              if (!data.success) {
-                  throw new Error(data.message || 'Wallet payment failed');
-              }
-              return data;
-          } catch (error) {
-              console.error('Error processing wallet payment:', error);
-              throw error;
-          }
-      }
-
-      async function placeOrder() {
-          // Check if address is selected
-          const selectedAddress = document.querySelector('input[name="selectedAddress"]:checked');
-          if (!selectedAddress) {
-              Swal.fire({
-                  icon: 'error',
-                  title: 'Address Required',
-                  text: 'Please select a delivery address'
-              });
-              return;
-          }
-
-          // Check if payment method is selected
-          const selectedPayment = document.querySelector('input[name="paymentMethod"]:checked');
-          if (!selectedPayment) {
-              Swal.fire({
-                  icon: 'error',
-                  title: 'Payment Method Required',
-                  text: 'Please select a payment method'
-              });
-              return;
-          }
-
-          // Show loading state
-          Swal.fire({
-              title: 'Processing...',
-              text: 'Please wait while we process your order',
-              allowOutsideClick: false,
-              showConfirmButton: false,
-              didOpen: () => {
-                  Swal.showLoading();
-              }
-          });
-
-          try {
-              if (selectedPayment.value === 'online') {
-                  // Handle Razorpay payment
-                  const orderData = await createRazorpayOrder(selectedAddress.value);
-                  
-                  if (!orderData.success) {
-                      throw new Error(orderData.message || 'Failed to create order');
-                  }
-
-                  const options = {
-                      key: orderData.key,
-                      amount: orderData.order.amount,
-                      currency: orderData.order.currency,
-                      name: 'LACIFY',
-                      description: 'Purchase Payment',
-                      order_id: orderData.order.id,
-                      handler: async function(response) {
-                          try {
-                              const verifyResponse = await fetch('/checkout/verify-payment', {
-                                  method: 'POST',
-                                  headers: {
-                                      'Content-Type': 'application/json'
-                                  },
-                                  body: JSON.stringify({
-                                      razorpay_payment_id: response.razorpay_payment_id,
-                                      razorpay_order_id: response.razorpay_order_id,
-                                      razorpay_signature: response.razorpay_signature,
-                                      addressId: selectedAddress.value,
-                                      couponCode: document.getElementById('appliedCouponCode')?.textContent || null
-                                  })
-                              });
-
-                              const verifyData = await verifyResponse.json();
-                              if (verifyData.success) {
-                                  Swal.fire({
-                                      icon: 'success',
-                                      title: 'Success!',
-                                      text: 'Order placed successfully',
-                                      confirmButtonText: 'View Order'
-                                  }).then(() => {
-                                      window.location.href = `/orders?success=true&orderId=${verifyData.orderId}`;
-                                  });
-                              } else {
-                                  throw new Error(verifyData.message || 'Payment verification failed');
-                              }
-                          } catch (error) {
-                              console.error('Payment verification error:', error);
-                              Swal.fire({
-                                  icon: 'error',
-                                  title: 'Payment Verification Failed',
-                                  text: error.message || 'Something went wrong during payment verification'
-                              });
-                          }
-                      },
-                      prefill: {
-                          name: orderData.customerName || '',
-                          email: orderData.email || '',
-                          contact: orderData.phone || ''
-                      },
-                      theme: {
-                          color: '#000000'
-                      }
-                  };
-
-                  const razorpayInstance = new Razorpay(options);
-                  razorpayInstance.open();
-                  Swal.close();
-
-              } else {
-                  // Handle COD payment
-                  const response = await fetch('/checkout/place-order', {
-                      method: 'POST',
-                      headers: {
-                          'Content-Type': 'application/json'
-                      },
-                      body: JSON.stringify({
-                          addressId: selectedAddress.value,
-                          paymentMethod: selectedPayment.value
-                      })
-                  });
-
-                  const data = await response.json();
-                  if (data.success) {
-                      Swal.fire({
-                          icon: 'success',
-                          title: 'Success!',
-                          text: 'Order placed successfully',
-                          confirmButtonText: 'View Order'
-                      }).then(() => {
-                          window.location.href = `/orders?success=true&orderId=${data.orderId}`;
-                      });
-                  } else {
-                      throw new Error(data.message || 'Failed to place order');
-                  }
-              }
-          } catch (error) {
-              console.error('Error:', error);
-              Swal.fire({
-                  icon: 'error',
-                  title: 'Error!',
-                  text: error.message || 'Something went wrong'
-              });
-          }
-      }
-
-      // Add event listener for payment method selection
-      document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
-          radio.addEventListener('change', function() {
-              const codOption = document.getElementById('codOption');
-              const finalTotal = parseFloat(codOption.dataset.finalTotal || 0);
-              
-              if (this.value === 'cod' && finalTotal > 1000) {
-                  alert('Cash on Delivery is not available for orders above ₹5,00,000');
-                  this.checked = false;
-              }
-          });
-      });
-
-      function showInputModal(amountNeeded) {
-          const modal = document.getElementById('inputModal');
-          const backdrop = document.getElementById('modalBackdrop');
-          const modalContent = modal.querySelector('div');
-
-          document.getElementById('amountNeeded').textContent = amountNeeded.toFixed(2);
-          document.getElementById('fundAmount').value = Math.ceil(amountNeeded);
-
-          modal.classList.remove('hidden');
-          backdrop.classList.remove('hidden');
-          setTimeout(() => {
-              backdrop.classList.remove('opacity-0');
-              modalContent.classList.remove('scale-90', 'opacity-0', 'translate-y-4');
-          }, 50);
-      }
-
-      function hideInputModal() {
-          const modal = document.getElementById('inputModal');
-          const backdrop = document.getElementById('modalBackdrop');
-          const modalContent = modal.querySelector('div');
-
-          backdrop.classList.add('opacity-0');
-          modalContent.classList.add('scale-90', 'opacity-0', 'translate-y-4');
-
-          setTimeout(() => {
-              modal.classList.add('hidden');
-              backdrop.classList.add('hidden');
-          }, 300);
-      }
-
-      function updateCODAvailability(finalAmount) {
-          const codOption = document.getElementById('codOption');
-          const codPayment = document.getElementById('codPayment');
-          const codAvailability = document.getElementById('codAvailability');
-          const codMessage = document.getElementById('codMessage');
-
-          if (finalAmount > 1000) {
-              codOption.classList.add('opacity-60');
-              codOption.classList.remove('hover:bg-gray-50');
-              codPayment.disabled = true;
-              codAvailability.classList.remove('hidden');
-              codAvailability.classList.add('bg-red-100', 'text-red-800');
-              codAvailability.textContent = 'Not Available';
-              codMessage.textContent = 'Not available for orders above ₹1,000';
-
-              // If COD was selected, switch to a different payment method
-              if (codPayment.checked) {
-                  document.querySelector('input[name="paymentMethod"][value="online"]').checked = true;
-              }
-          } else {
-              codOption.classList.remove('opacity-60');
-              codOption.classList.add('hover:bg-gray-50');
-              codPayment.disabled = false;
-              codAvailability.classList.add('hidden');
-              codMessage.textContent = 'Pay when you receive the order';
-          }
-      }
-
-      // Update COD availability when coupon is applied or removed
-      function updatePaymentMethodsAfterCoupon(finalAmount) {
-          updateCODAvailability(finalAmount);
-      }
-
-      // Initial update
-      document.addEventListener('DOMContentLoaded', function() {
-          const finalTotal = parseFloat(document.getElementById('codOption').dataset.finalTotal);
-          updateCODAvailability(finalTotal);
-      });
-
-      document.addEventListener('DOMContentLoaded', function() {
-          // Check for success parameter in URL
-          const urlParams = new URLSearchParams(window.location.search);
-          const success = urlParams.get('success');
-          const orderId = urlParams.get('orderId');
-
-          if (success === 'true' && orderId) {
-              showAlert('success', `Your order (${orderId}) has been placed successfully.`)
-                  .then(() => {
-                      // Clean up URL without refreshing the page
-                      window.history.replaceState({}, document.title, '/orders');
-                  });
-          }
-      });
-
-      function showAlert(type, message) {
-          return new Promise((resolve) => {
-              const modal = document.getElementById('alertModal');
-              const backdrop = document.getElementById('modalBackdrop');
-              const modalContent = modal.querySelector('div');
-
-              // Hide all alert types first
-              ['successAlert', 'errorAlert', 'loadingAlert'].forEach(alertId => {
-                  document.getElementById(alertId).classList.add('hidden');
-              });
-
-              // Show selected alert type
-              const alertElement = document.getElementById(`${type}Alert`);
-              if (!alertElement) {
-                  console.error(`Alert type "${type}" not found`);
-                  return;
-              }
-              alertElement.classList.remove('hidden');
-
-              // Update message if provided
-              if (message) {
-                  const messageElement = document.getElementById(`${type}Message`);
-                  if (messageElement) {
-                      messageElement.textContent = message;
-                  }
-              }
-
-              // Show modal with animation
-              modal.classList.remove('hidden');
-              backdrop.classList.remove('hidden');
-              setTimeout(() => {
-                  backdrop.classList.remove('opacity-0');
-                  modalContent.classList.remove('scale-90', 'opacity-0', 'translate-y-4');
-              }, 50);
-
-              // Add click handler to button (except for loading state)
-              if (type !== 'loading') {
-                  const button = alertElement.querySelector('button');
-                  if (button) {
-                      button.onclick = () => {
-                          hideAlert();
-                          resolve(true);
-                      };
-                  }
-              }
-          });
-      }
-
-      function hideAlert() {
-          const modal = document.getElementById('alertModal');
-          const backdrop = document.getElementById('modalBackdrop');
-          const modalContent = modal.querySelector('div');
-
-          backdrop.classList.add('opacity-0');
-          modalContent.classList.add('scale-90', 'opacity-0', 'translate-y-4');
-
-          setTimeout(() => {
-              modal.classList.add('hidden');
-              backdrop.classList.add('hidden');
-          }, 300);
-      }
-
-      document.addEventListener('DOMContentLoaded', async function() {
-          const urlParams = new URLSearchParams(window.location.search);
-          const success = urlParams.get('success');
-          const orderId = urlParams.get('orderId');
-
-          if (success === 'true' && orderId) {
-              await showAlert('success', `Your order (${orderId}) has been placed successfully.`);
-              window.history.replaceState({}, document.title, '/orders');
-          }
-      });
-
+            let appliedCoupon = null;
+            let currentDiscount = 0;
+            const cartTotal = <%= total %>;
+
+            function openCouponModal() {
+                fetchCoupons();
+                document.getElementById('couponModal').classList.remove('hidden');
+            }
+
+            function closeCouponModal() {
+                document.getElementById('couponModal').classList.add('hidden');
+            }
+
+            async function fetchCoupons() {
+                try {
+                    const response = await fetch('/checkout/available-coupons');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        renderCoupons(data.coupons);
+                    } else {
+                        throw new Error(data.message);
+                    }
+                } catch (error) {
+                    console.error('Error fetching coupons:', error);
+                    await showAlert('error', 'Failed to load coupons');
+                }
+            }
+
+            function renderCoupons(coupons) {
+                const activeCouponsList = document.getElementById('activeCouponsList');
+                activeCouponsList.innerHTML = '';
+
+                // Separate applicable and non-applicable coupons
+                const applicableCoupons = coupons.filter(coupon => coupon.isApplicable);
+                const nonApplicableCoupons = coupons.filter(coupon => !coupon.isApplicable);
+
+                // Render applicable coupons first with a header
+                if (applicableCoupons.length > 0) {
+                    activeCouponsList.innerHTML += `
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-green-600 mb-3">Available for You</h4>
+                            <div class="space-y-3">
+                                ${applicableCoupons.map(coupon =>
+                                    createCouponElement(coupon, true).outerHTML
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Render non-applicable coupons with a header
+                if (nonApplicableCoupons.length > 0) {
+                    activeCouponsList.innerHTML += `
+                        <div>
+                            ${applicableCoupons.length > 0 ? '<hr class="my-4">' : ''}
+                            <h4 class="text-sm font-medium text-gray-600 mb-3">Other Coupons</h4>
+                            <div class="space-y-3">
+                                ${nonApplicableCoupons.map(coupon =>
+                                    createCouponElement(coupon, false).outerHTML
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Show "No coupons" message if both sections are empty
+                if (!applicableCoupons.length && !nonApplicableCoupons.length) {
+                    activeCouponsList.innerHTML = `
+                        <div class="text-gray-500 text-center py-3">
+                            No coupons available
+                        </div>
+                    `;
+                }
+            }
+
+            function createCouponElement(coupon, isApplicable) {
+                const div = document.createElement('div');
+                div.className = `p-4 border rounded-lg ${isApplicable ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`;
+
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="font-medium ${isApplicable ? 'text-green-700' : 'text-gray-700'}">${coupon.code}</h3>
+                            <p class="text-sm text-gray-600 mt-1">
+                                ${coupon.discountPercentage}% OFF
+                                ${coupon.maximumDiscount ? ` up to ₹${coupon.maximumDiscount}` : ''}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Min purchase: ₹${coupon.minimumPurchase}
+                            </p>
+                            <p class="text-xs text-gray-500">
+                                Valid till: ${new Date(coupon.expiryDate).toLocaleDateString()}
+                            </p>
+                        </div>
+                        ${isApplicable ? `
+                            <button onclick="applyCoupon('${coupon.code}')"
+                                    class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                Apply
+                            </button>
+                        ` : `
+                            <span class="text-xs text-gray-500 italic">
+                                Not applicable
+                            </span>
+                        `}
+                    </div>
+                `;
+
+                return div;
+            }
+
+            function getCouponInactiveReason(coupon) {
+                if (coupon.minimumPurchase > cartTotal) return `Min. purchase ₹${coupon.minimumPurchase}`;
+                if (coupon.totalCoupon && coupon.usedCouponCount >= coupon.totalCoupon) return 'Coupon limit reached';
+                return 'Not applicable';
+            }
+
+            // Add this function to manage the Apply Coupon button state
+            function toggleApplyCouponButton(disabled) {
+                const applyCouponButton = document.querySelector('button[onclick="openCouponModal()"]');
+                if (applyCouponButton) {
+                    applyCouponButton.disabled = disabled;
+                    if (disabled) {
+                        applyCouponButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        applyCouponButton.classList.remove('hover:bg-gray-200');
+                    } else {
+                        applyCouponButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                        applyCouponButton.classList.add('hover:bg-gray-200');
+                    }
+                }
+            }
+
+            async function applyCoupon(couponCode) {
+                try {
+
+                    // Check for empty or whitespace-only coupon code
+                    if (!couponCode || !couponCode.trim()) {
+                        await showAlert('error', 'Please enter a valid coupon code');
+                        return;
+                    }
+
+                    // Remove leading and trailing spaces
+                    const trimmedCode = couponCode.trim().toUpperCase();
+
+
+                    const response = await fetch('/checkout/apply-coupon', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ code: trimmedCode })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+
+                        // Update UI elements
+                        const discountRow = document.getElementById('discountRow');
+                        const discountAmount = document.getElementById('discountAmount');
+                        const finalTotal = document.getElementById('finalTotal');
+                        const appliedCouponInfo = document.getElementById('appliedCouponInfo');
+                        const appliedCouponCode = document.getElementById('appliedCouponCode');
+                        const discountInfo = document.getElementById('discountInfo');
+
+                        // Check if all required elements exist
+                        if (!discountRow || !discountAmount || !finalTotal || !appliedCouponInfo ||
+                            !appliedCouponCode || !discountInfo) {
+                            console.error('Some required elements are missing');
+                            return;
+                        }
+
+                        // Update discount and coupon info
+                        discountRow.classList.remove('hidden');
+                        discountAmount.textContent = data.discount.toFixed(2);
+                        finalTotal.textContent = (cartTotal - data.discount).toFixed(2);
+
+                        appliedCouponInfo.classList.remove('hidden');
+                        appliedCouponCode.textContent = trimmedCode;
+                        discountInfo.textContent = `₹${data.discount.toFixed(2)} discount applied`;
+
+                        // Close coupon modal
+                        closeCouponModal();
+
+                        updatePaymentMethodsAfterCoupon((cartTotal - data.discount).toFixed(2))
+                        // Show success message
+                        await showAlert('success', 'Coupon applied successfully!');
+                    } else {
+                        throw new Error(data.message || 'Failed to apply coupon');
+                    }
+                } catch (error) {
+                    console.error('Error in applyCoupon:', error);
+                }
+            }
+
+            async function removeCoupon() {
+                try {
+
+                    // Reset UI elements
+                    const discountRow = document.getElementById('discountRow');
+                    const discountAmount = document.getElementById('discountAmount');
+                    const finalTotal = document.getElementById('finalTotal');
+                    const appliedCouponInfo = document.getElementById('appliedCouponInfo');
+                    const subtotalElement = document.getElementById('subtotal');
+
+                        // Get the original subtotal
+                        const originalTotal = parseFloat(subtotalElement.textContent);
+
+                        // Update UI elements
+                        discountRow.classList.add('hidden');
+                        discountAmount.textContent = '0.00';
+                        finalTotal.textContent = originalTotal.toFixed(2);
+                        appliedCouponInfo.classList.add('hidden');
+
+                        // Important: Clear the appliedCouponCode content
+                        if (appliedCouponCode) {
+                            appliedCouponCode.textContent = '';
+                            appliedCouponCode.setAttribute('data-coupon', ''); // Also clear data attribute if exists
+                        }
+
+                    // Update payment methods based on original total
+                    updatePaymentMethodsAfterCoupon(originalTotal);
+
+                    // Show success message
+                    await showAlert('success', 'Coupon removed successfully');
+                } catch (error) {
+                    console.error('Error removing coupon:', error);
+                    await showAlert('error', error.message || 'Failed to remove coupon. Please try again.');
+                }
+            }
+
+            function updateTotalWithDiscount(discount) {
+                const finalTotalElement = document.getElementById('finalTotal');
+                const discountElement = document.getElementById('discountAmount');
+                const discountRow = document.getElementById('discountRow');
+
+                if (discount > 0) {
+                    discountRow.classList.remove('hidden');
+                    discountElement.textContent = discount.toFixed(2);
+                    finalTotalElement.textContent = (cartTotal - discount).toFixed(2);
+                } else {
+                    discountRow.classList.add('hidden');
+                    discountElement.textContent = '0';
+                    finalTotalElement.textContent = cartTotal.toFixed(2);
+                }
+            }
+
+            // Add this function to get the current total with discount
+            function getDiscountedTotal() {
+                const subtotal = parseFloat(document.getElementById('subtotal').textContent);
+                const discountAmount = parseFloat(document.getElementById('discountAmount').textContent) || 0;
+                return subtotal - discountAmount;
+            }
+
+            // Update createRazorpayOrder function
+            async function createRazorpayOrder(addressId) {
+                try {
+                    const couponCode = document.getElementById('appliedCouponCode')?.textContent;
+
+                    const response = await fetch('/checkout/create-razorpay-order', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            addressId: addressId,
+                            couponCode: couponCode || null,
+                            paymentMethod: 'razorpay'
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.message);
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Error creating Razorpay order:', error);
+                    throw error;
+                }
+            }
+
+            // Update wallet payment function
+            async function processWalletPayment(addressId) {
+                try {
+                    const finalAmount = getDiscountedTotal();
+
+                    const response = await fetch('/checkout/wallet-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            addressId: addressId,
+                            amount: finalAmount,
+                            couponCode: document.getElementById('appliedCouponCode')?.textContent
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (!data.success) {
+                        throw new Error(data.message || 'Wallet payment failed');
+                    }
+                    return data;
+                } catch (error) {
+                    console.error('Error processing wallet payment:', error);
+                    throw error;
+                }
+            }
+
+            async function placeOrder() {
+                // Check if address is selected
+                const couponCode = document.getElementById('appliedCouponCode')?.textContent;
+                const selectedAddress = document.querySelector('input[name="selectedAddress"]:checked');
+                if (!selectedAddress) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Address Required',
+                        text: 'Please select a delivery address'
+                    });
+                    return;
+                }
+
+                // Check if payment method is selected
+                const selectedPayment = document.querySelector('input[name="paymentMethod"]:checked');
+                if (!selectedPayment) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Payment Method Required',
+                        text: 'Please select a payment method'
+                    });
+                    return;
+                }
+
+                // Show loading state
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Please wait while we process your order',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                try {
+                    if (selectedPayment.value === 'online') {
+                        // Handle Razorpay payment
+                        const orderData = await createRazorpayOrder(selectedAddress.value);
+
+                        if (!orderData.success) {
+                            throw new Error(orderData.message || 'Failed to create order');
+                        }
+
+                        const options = {
+                            key: orderData.key,
+                            amount: orderData.order.amount,
+                            currency: orderData.order.currency,
+                            name: 'LACIFY',
+                            description: 'Purchase Payment',
+                            order_id: orderData.order.id,
+                            handler: async function(response) {
+                                try {
+                                    const verifyResponse = await fetch('/checkout/verify-payment', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            razorpay_payment_id: response.razorpay_payment_id,
+                                            razorpay_order_id: response.razorpay_order_id,
+                                            razorpay_signature: response.razorpay_signature,
+                                            addressId: selectedAddress.value,
+                                            couponCode: document.getElementById('appliedCouponCode')?.textContent || null
+                                        })
+                                    });
+                                    
+                                    const verifyData = await verifyResponse.json();
+                                    if (verifyData.success) {
+                                        Swal.fire({
+                                            icon: 'success',
+                                            title: 'Success!',
+                                            text: 'Order placed successfully',
+                                            confirmButtonText: 'View Order'
+                                        }).then(() => {
+                                            window.location.href = `/orders?success=true&orderId=${verifyData.orderId}`;
+                                        });
+                                    } else {
+                                        throw new Error(verifyData.message || 'Payment verification failed');
+                                    }
+                                } catch (error) {
+                                    console.error('Payment verification error:', error);
+                                    Swal.fire({
+                                        icon: 'error',
+                                        title: 'Payment Verification Failed',
+                                        text: error.message || 'Something went wrong during payment verification'
+                                    });
+                                }
+                            },
+                            prefill: {
+                                name: orderData.customerName || '',
+                                email: orderData.email || '',
+                                contact: orderData.phone || ''
+                            },
+                            theme: {
+                                color: '#000000'
+                            }
+                        };
+
+                        const razorpayInstance = new Razorpay(options);
+                        razorpayInstance.open();
+                        Swal.close();
+
+                    } else {
+                        // Handle COD payment
+                        const response = await fetch('/checkout/place-order', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                addressId: selectedAddress.value,
+                                paymentMethod: selectedPayment.value,
+                                couponCode: document.getElementById('appliedCouponCode')?.textContent || null
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Success!',
+                                text: 'Order placed successfully',
+                                confirmButtonText: 'View Order'
+                            }).then(() => {
+                                window.location.href = `/orders?success=true&orderId=${data.orderId}`;
+                            });
+                        } else {
+                            throw new Error(data.message || 'Failed to place order');
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: error.message || 'Something went wrong'
+                    });
+                }
+            }
+
+            // Add event listener for payment method selection
+            document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const codOption = document.getElementById('codOption');
+                    const finalTotalElement = document.getElementById("finalTotal");
+      const finalTotal = finalTotalElement ? parseFloat(finalTotalElement.textContent.trim()) || 0 : 0;
+
+
+                    if (this.value === 'cod' && finalTotal > 1000) {
+                        alert('Cash on Delivery is not available for orders above ₹1000');
+                        this.checked = false;
+                    }
+                });
+            });
+
+            function showInputModal(amountNeeded) {
+                const modal = document.getElementById('inputModal');
+                const backdrop = document.getElementById('modalBackdrop');
+                const modalContent = modal.querySelector('div');
+
+                document.getElementById('amountNeeded').textContent = amountNeeded.toFixed(2);
+                document.getElementById('fundAmount').value = Math.ceil(amountNeeded);
+
+                modal.classList.remove('hidden');
+                backdrop.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0');
+                    modalContent.classList.remove('scale-90', 'opacity-0', 'translate-y-4');
+                }, 50);
+            }
+
+            function hideInputModal() {
+                const modal = document.getElementById('inputModal');
+                const backdrop = document.getElementById('modalBackdrop');
+                const modalContent = modal.querySelector('div');
+
+                backdrop.classList.add('opacity-0');
+                modalContent.classList.add('scale-90', 'opacity-0', 'translate-y-4');
+
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    backdrop.classList.add('hidden');
+                }, 300);
+            }
+
+            function updateCODAvailability(finalAmount) {
+                const codOption = document.getElementById('codOption');
+                const codPayment = document.getElementById('codPayment');
+                const codAvailability = document.getElementById('codAvailability');
+                const codMessage = document.getElementById('codMessage');
+
+                if (finalAmount > 1000) {
+                    codOption.classList.add('opacity-60');
+                    codOption.classList.remove('hover:bg-gray-50');
+                    codPayment.disabled = true;
+                    codAvailability.classList.remove('hidden');
+                    codAvailability.classList.add('bg-red-100', 'text-red-800');
+                    codAvailability.textContent = 'Not Available';
+                    codMessage.textContent = 'Not available for orders above ₹1,000';
+
+                    // If COD was selected, switch to a different payment method
+                    if (codPayment.checked) {
+                        document.querySelector('input[name="paymentMethod"][value="online"]').checked = true;
+                    }
+                } else {
+                    codOption.classList.remove('opacity-60');
+                    codOption.classList.add('hover:bg-gray-50');
+                    codPayment.disabled = false;
+                    codAvailability.classList.add('hidden');
+                    codMessage.textContent = 'Pay when you receive the order';
+                }
+            }
+
+            // Update COD availability when coupon is applied or removed
+            function updatePaymentMethodsAfterCoupon(finalAmount) {
+                updateCODAvailability(finalAmount);
+            }
+
+            // Initial update
+            document.addEventListener('DOMContentLoaded', function() {
+                const finalTotal = parseFloat(document.getElementById('codOption').dataset.finalTotal);
+                updateCODAvailability(finalTotal);
+            });
+
+            document.addEventListener('DOMContentLoaded', function() {
+                // Check for success parameter in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const success = urlParams.get('success');
+                const orderId = urlParams.get('orderId');
+
+                if (success === 'true' && orderId) {
+                    showAlert('success', `Your order (${orderId}) has been placed successfully.`)
+                        .then(() => {
+                            // Clean up URL without refreshing the page
+                            window.history.replaceState({}, document.title, '/orders');
+                        });
+                }
+            });
+
+            function showAlert(type, message) {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('alertModal');
+                    const backdrop = document.getElementById('modalBackdrop');
+                    const modalContent = modal.querySelector('div');
+
+                    // Hide all alert types first
+                    ['successAlert', 'errorAlert', 'loadingAlert'].forEach(alertId => {
+                        document.getElementById(alertId).classList.add('hidden');
+                    });
+
+                    // Show selected alert type
+                    const alertElement = document.getElementById(`${type}Alert`);
+                    if (!alertElement) {
+                        console.error(`Alert type "${type}" not found`);
+                        return;
+                    }
+                    alertElement.classList.remove('hidden');
+
+                    // Update message if provided
+                    if (message) {
+                        const messageElement = document.getElementById(`${type}Message`);
+                        if (messageElement) {
+                            messageElement.textContent = message;
+                        }
+                    }
+
+                    // Show modal with animation
+                    modal.classList.remove('hidden');
+                    backdrop.classList.remove('hidden');
+                    setTimeout(() => {
+                        backdrop.classList.remove('opacity-0');
+                        modalContent.classList.remove('scale-90', 'opacity-0', 'translate-y-4');
+                    }, 50);
+
+                    // Add click handler to button (except for loading state)
+                    if (type !== 'loading') {
+                        const button = alertElement.querySelector('button');
+                        if (button) {
+                            button.onclick = () => {
+                                hideAlert();
+                                resolve(true);
+                            };
+                        }
+                    }
+                });
+            }
+
+            function hideAlert() {
+                const modal = document.getElementById('alertModal');
+                const backdrop = document.getElementById('modalBackdrop');
+                const modalContent = modal.querySelector('div');
+
+                backdrop.classList.add('opacity-0');
+                modalContent.classList.add('scale-90', 'opacity-0', 'translate-y-4');
+
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    backdrop.classList.add('hidden');
+                }, 300);
+            }
+
+            document.addEventListener('DOMContentLoaded', async function() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const success = urlParams.get('success');
+                const orderId = urlParams.get('orderId');
+
+                if (success === 'true' && orderId) {
+                    await showAlert('success', `Your order (${orderId}) has been placed successfully.`);
+                    window.history.replaceState({}, document.title, '/orders');
+                }
+            });
     </script>
   </body>
 </html>
-
