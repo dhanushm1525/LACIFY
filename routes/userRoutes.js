@@ -80,4 +80,9 @@ router.post('/checkout/verify-payment', userMiddlewares.checkSession,userMiddlew
 router.post('/checkout/payment-failed', userMiddlewares.checkSession,userMiddleware.errorHandler, checkoutController.handlePaymentFailure);
 
 
+router.get('/orders/:orderId/invoice', userMiddlewares.checkSession, userMiddleware.errorHandler,orderController.generateInvoice);
+router.post('/orders/:orderId/retry-payment', userMiddlewares.checkSession,userMiddleware.errorHandler, orderController.retryPayment);
+router.post('/orders/:orderId/verify-retry-payment', userMiddlewares.checkSession,userMiddleware.errorHandler, orderController.verifyRetryPayment);
+
+
 export default router;
