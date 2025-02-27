@@ -90,6 +90,11 @@
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-2 focus:border-gray-900"
                   >
                     <option value="">All</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
                   </select>
                 </div>
 
@@ -316,26 +321,45 @@
 
           // Function to populate filter options
           function populateFilterOptions() {
-
-              
               // Get unique sizes
-              const sizes = [...new Set(originalProducts.flatMap(p => p.size))].filter(Boolean).sort();
-              
-             
-              
-              // Clear existing options
+              const sizes = [...new Set(products.flatMap(p => 
+                  p.size.map(sizeObj => sizeObj.size)
+              ))].filter(Boolean).sort((a, b) => Number(a) - Number(b));
 
+              // Clear existing options except the first one (All)
               while (sizeFilter.options.length > 1) {
                   sizeFilter.remove(1);
               }
 
-
-            
-
               // Add size options
-              size.forEach(size => {
-                  const option = new Option(size, size);
-                  sizeFilter.add(option);
+              sizes.forEach(sizeValue => {
+                  const option = document.createElement('option');
+                  option.value = sizeValue;
+                  option.textContent = sizeValue;
+                  sizeFilter.appendChild(option);
+              });
+
+              // Add event listeners
+              searchButton.addEventListener('click', applyFilters);
+              searchInput.addEventListener('keyup', (e) => {
+                  if (e.key === 'Enter') applyFilters();
+              });
+              
+              // Add input event listeners for immediate filtering
+              [sortFilter, sizeFilter, stockFilter].forEach(filter => {
+                  filter.addEventListener('change', () => {
+                      console.log(`${filter.id} changed to:`, filter.value);
+                      applyFilters();
+                  });
+              });
+
+              // Add debounced event listeners for price inputs
+              let priceTimeout;
+              [minPriceFilter, maxPriceFilter].forEach(input => {
+                  input.addEventListener('input', () => {
+                      clearTimeout(priceTimeout);
+                      priceTimeout = setTimeout(applyFilters, 500);
+                  });
               });
           }
 
@@ -379,15 +403,19 @@
           // Function to fetch products with pagination
           async function fetchProducts(page = 1) {
               try {
-                  const queryParams = new URLSearchParams({
-                      page,
-                      search: searchInput.value,
-                      sort: sortFilter.value,
-                      size: sizeFilter.value,
-                      minPrice: minPriceFilter.value,
-                      maxPrice: maxPriceFilter.value,
-                      stock: stockFilter.value
-                  });
+                  const selectedSize = sizeFilter.value;
+                  console.log('Sending size filter:', selectedSize); // Debug log
+
+                  const queryParams = new URLSearchParams();
+                  
+                  // Only add parameters if they have values
+                  if (page) queryParams.append('page', page.toString());
+                  if (searchInput.value) queryParams.append('search', searchInput.value);
+                  if (sortFilter.value !== 'default') queryParams.append('sort', sortFilter.value);
+                  if (selectedSize) queryParams.append('size', selectedSize);
+                  if (minPriceFilter.value) queryParams.append('minPrice', minPriceFilter.value);
+                  if (maxPriceFilter.value) queryParams.append('maxPrice', maxPriceFilter.value);
+                  if (stockFilter.value) queryParams.append('stock', stockFilter.value);
 
                   const response = await fetch(`/shop?${queryParams.toString()}`, {
                       headers: {
@@ -395,9 +423,12 @@
                       }
                   });
                   
-                  if (!response.ok) throw new Error('Network response was not ok');
+                  if (!response.ok) {
+                      throw new Error('Network response was not ok');
+                  }
                   
                   const data = await response.json();
+                  console.log('Received data:', data); // Debug log
                   
                   // Update pagination state
                   currentPage = data.pagination.currentPage;

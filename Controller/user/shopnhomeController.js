@@ -8,27 +8,27 @@ const getHome = async (req, res) => {
         const activeCategories = await Category.find({ isActive: true }).distinct('_id');
 
         // Fetch active products with active categories
-        const products = await Product.find({ 
+        const products = await Product.find({
             isActive: true,
             categoriesId: { $in: activeCategories }
         })
-        .populate({
-            path: 'categoriesId',
-            match: { isActive: true }
-        })
-        .sort({ createdAt: -1 })
-        .limit(5);
+            .populate({
+                path: 'categoriesId',
+                match: { isActive: true }
+            })
+            .sort({ createdAt: -1 })
+            .limit(5);
 
         // Filter out products where category wasn't populated (extra safety check)
         const filteredProducts = products.filter(product => product.categoriesId);
 
-        res.render('user/home', { 
+        res.render('user/home', {
             products: filteredProducts,
             title: 'Home'
         });
     } catch (error) {
         console.error('Error fetching products:', error);
-        res.render('user/home', { 
+        res.render('user/home', {
             products: [],
             title: 'Home'
         });
@@ -36,6 +36,9 @@ const getHome = async (req, res) => {
 };
 
 const getShop = async (req, res) => {
+    // At the start of getShop, add:
+    const sampleProduct = await Product.findOne({ isActive: true });
+    console.log('Sample product size structure:', JSON.stringify(sampleProduct.size));
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = 12;
@@ -46,13 +49,15 @@ const getShop = async (req, res) => {
         const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : '';
         const stock = req.query.stock || '';
 
+        console.log('Received size filter value:', size);
+
         // Get active offers first
         const activeOffers = await Offer.find({
             startDate: { $lte: new Date() },
             endDate: { $gte: new Date() },
             status: 'active'
         }).populate('categoryId');
-        
+
         // Create maps for both product and category offers
         const productOfferMap = new Map();
         const categoryOfferMap = new Map();
@@ -79,7 +84,7 @@ const getShop = async (req, res) => {
         const activeCategories = await Category.find({ isActive: true }).distinct('_id');
 
         // Build base query
-        let query = { 
+        let query = {
             isActive: true,
             categoriesId: { $in: activeCategories }
         };
@@ -93,10 +98,18 @@ const getShop = async (req, res) => {
         }
 
         // Add size filter
-        if (size) {
-            query.size = { $in: [size.size] };
-           
+        if (size && size !== '') {
+            console.log('Applying size filter for size:', size);
+            query['size'] = {
+                $elemMatch: {
+                    size: size,
+                    stock: { $gt: 0 }
+                }
+            };
+            console.log('Applied size filter query:', JSON.stringify(query));
         }
+
+        console.log('Final query object:', JSON.stringify(query));
 
         // Add price range filter
         if (minPrice || maxPrice) {
@@ -107,12 +120,12 @@ const getShop = async (req, res) => {
 
         // Add stock filter
         if (stock === 'inStock') {
-            query.stock = { $gt: 0 };
+            query['size.stock'] = { $gt: 0 };
         } else if (stock === 'outOfStock') {
-            query.stock = 0;
+            // This will find products where all sizes have 0 stock
+            query['size'] = { $not: { $elemMatch: { stock: { $gt: 0 } } } };
         }
 
-       
 
         // Build sort options
         let sortOptions = {};
@@ -145,9 +158,9 @@ const getShop = async (req, res) => {
         const productsWithPrices = products.map(product => {
             const productData = product.toObject();
             const productOffer = productOfferMap.get(product._id.toString());
-            const categoryOffer = product.categoriesId ? 
+            const categoryOffer = product.categoriesId ?
                 categoryOfferMap.get(product.categoriesId.toString()) : null;
-            
+
             let finalPrice = product.price;
             let appliedDiscount = 0;
             let appliedOffer = null;
@@ -211,11 +224,11 @@ const getShop = async (req, res) => {
         }
         res.render('user/shop', {
             products: [],
-            pagination: { 
-                currentPage: 1, 
-                totalPages: 1, 
-                hasNextPage: false, 
-                hasPrevPage: false 
+            pagination: {
+                currentPage: 1,
+                totalPages: 1,
+                hasNextPage: false,
+                hasPrevPage: false
             },
             search: '',
             sort: 'default'
