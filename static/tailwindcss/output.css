@@ -884,8 +884,8 @@
   .max-h-32 {
     max-height: calc(var(--spacing) * 32);
   }
-  .max-h-\[60vh\] {
-    max-height: 60vh;
+  .max-h-\[90vh\] {
+    max-height: 90vh;
   }
   .max-h-\[400px\] {
     max-height: 400px;
@@ -893,11 +893,11 @@
   .max-h-\[40vh\] {
     max-height: 40vh;
   }
+  .max-h-\[60vh\] {
+    max-height: 60vh;
+  }
   .max-h-\[80vh\] {
     max-height: 80vh;
-  }
-  .max-h-\[90vh\] {
-    max-height: 90vh;
   }
   .max-h-\[500px\] {
     max-height: 500px;
@@ -1422,6 +1422,9 @@
   }
   .border-t-white {
     border-top-color: var(--color-white);
+  }
+  .bg-\[\#E5E1DA\] {
+    background-color: #E5E1DA;
   }
   .bg-black {
     background-color: var(--color-black);
@@ -3505,6 +3508,9 @@
     font-family: 'Inter', sans-serif;
     font-weight: 400;
   }
+}
+.bg-mycolor {
+  background-color: #051c40;
 }
 .bg-primary-white {
   background-color: var(--color-background);

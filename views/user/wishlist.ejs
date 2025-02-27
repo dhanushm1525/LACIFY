@@ -164,11 +164,11 @@
                             </div>
 
                             <button 
-                                onclick="removeFromWishlist('<%= item.productId._id %>')"
-                                class="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-sm hover:bg-red-50 transition-colors"
-                            >
-                                <i class="fas fa-heart text-red-500 text-sm"></i>
-                            </button>
+    onclick="console.log('Product ID from template: <%= item.productId._id %>'); return removeFromWishlist('<%= item.productId._id %>');"
+    class="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-sm hover:bg-red-50 transition-colors"
+>
+    <i class="fas fa-heart text-red-500 text-sm"></i>
+</button>
                         </div>
                     </div>
                 <% }); %>
@@ -237,10 +237,14 @@
         }
 
         async function removeFromWishlist(productId) {
+            console.log("Type of productId:", typeof productId);
+          console.log(productId);
+          
+            
             try {
                 // Prevent event propagation
-                event.preventDefault();
-                event.stopPropagation();
+                // event.preventDefault();
+                // event.stopPropagation();
 
                 const response = await fetch(`/wishlist/remove/${productId}`, {
                     method: 'DELETE'

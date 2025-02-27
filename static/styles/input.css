@@ -40,6 +40,10 @@
     }
 }
 
+.bg-mycolor {
+    background-color: #051c40;
+}
+
 /* Custom Colors */
 .bg-primary-white {
     background-color: var(--color-background);
