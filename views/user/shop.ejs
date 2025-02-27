@@ -118,7 +118,7 @@
                   </div>
                 </div>
 
-                <div>
+                <!-- <div>
                   <label
                     for="stockFilter"
                     class="block text-gray-700 font-medium mb-2"
@@ -132,7 +132,7 @@
                     <option value="inStock">In Stock</option>
                     <option value="outOfStock">Out of Stock</option>
                   </select>
-                </div>
+                </div> -->
               </div>
 
               <!-- Reset Button -->
@@ -249,7 +249,7 @@
           const sizeFilter = document.getElementById('size');
           const minPriceFilter = document.getElementById('minPrice');
           const maxPriceFilter = document.getElementById('maxPrice');
-          const stockFilter = document.getElementById('stockFilter');
+          // const stockFilter = document.getElementById('stockFilter');
           const resetButton = document.getElementById('resetButton');
           const prevPageBtn = document.getElementById('prevPage');
           const nextPageBtn = document.getElementById('nextPage');
@@ -346,7 +346,7 @@
               });
               
               // Add input event listeners for immediate filtering
-              [sortFilter, sizeFilter, stockFilter].forEach(filter => {
+              [sortFilter, sizeFilter].forEach(filter => {
                   filter.addEventListener('change', () => {
                       console.log(`${filter.id} changed to:`, filter.value);
                       applyFilters();
@@ -370,7 +370,7 @@
           });
           
           // Add input event listeners for immediate filtering
-          [sortFilter, sizeFilter, stockFilter].forEach(filter => {
+          [sortFilter, sizeFilter].forEach(filter => {
               filter.addEventListener('change', applyFilters);
           });
 
@@ -392,7 +392,7 @@
               sizeFilter.value = '';
               minPriceFilter.value = '';
               maxPriceFilter.value = '';
-              stockFilter.value = '';
+              // stockFilter.value = '';
               await fetchProducts(1);
           });
 
@@ -404,7 +404,7 @@
           async function fetchProducts(page = 1) {
               try {
                   const selectedSize = sizeFilter.value;
-                  console.log('Sending size filter:', selectedSize); // Debug log
+             
 
                   const queryParams = new URLSearchParams();
                   
@@ -415,7 +415,7 @@
                   if (selectedSize) queryParams.append('size', selectedSize);
                   if (minPriceFilter.value) queryParams.append('minPrice', minPriceFilter.value);
                   if (maxPriceFilter.value) queryParams.append('maxPrice', maxPriceFilter.value);
-                  if (stockFilter.value) queryParams.append('stock', stockFilter.value);
+                  // if (stockFilter.value) queryParams.append('stock', stockFilter.value);
 
                   const response = await fetch(`/shop?${queryParams.toString()}`, {
                       headers: {
@@ -428,7 +428,7 @@
                   }
                   
                   const data = await response.json();
-                  console.log('Received data:', data); // Debug log
+                 
                   
                   // Update pagination state
                   currentPage = data.pagination.currentPage;

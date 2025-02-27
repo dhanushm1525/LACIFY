@@ -90,22 +90,20 @@ const addToWishlist = async (req, res, next) => {
 
 
 const removeWishlist = async (req,res,next)=>{
-    console.log("Remove from wishlist request received");
-    console.log("Params:", req.params);
-    console.log("ProductId:", req.params.productId);
+
     
     try{
         const userId = req.session.user;
         const productId = req.params.productId;
 
-        console.log(req.body);
         
-        console.log(`Attempting to remove product ${productId} from wishlist of user ${userId}`);
+        
+        
         const wish = await Wishlist.updateOne(
             {userId},
             {$pull:{items:{productId}}}
         );
-        console.log("Update result:", wish ? "Success" : "Failed");
+       
 
         if(wish.modifiedCount===0){
             return res.status(404).json({

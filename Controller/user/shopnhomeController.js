@@ -38,7 +38,7 @@ const getHome = async (req, res) => {
 const getShop = async (req, res) => {
     // At the start of getShop, add:
     const sampleProduct = await Product.findOne({ isActive: true });
-    console.log('Sample product size structure:', JSON.stringify(sampleProduct.size));
+    
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = 12;
@@ -49,7 +49,7 @@ const getShop = async (req, res) => {
         const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : '';
         const stock = req.query.stock || '';
 
-        console.log('Received size filter value:', size);
+    
 
         // Get active offers first
         const activeOffers = await Offer.find({
@@ -99,17 +99,17 @@ const getShop = async (req, res) => {
 
         // Add size filter
         if (size && size !== '') {
-            console.log('Applying size filter for size:', size);
+            
             query['size'] = {
                 $elemMatch: {
                     size: size,
                     stock: { $gt: 0 }
                 }
             };
-            console.log('Applied size filter query:', JSON.stringify(query));
+            
         }
 
-        console.log('Final query object:', JSON.stringify(query));
+        
 
         // Add price range filter
         if (minPrice || maxPrice) {

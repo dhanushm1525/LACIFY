@@ -41,11 +41,7 @@ const getCheckoutPage = async (req, res) => {
                 select: 'productName size price'
             });
 
-        // console.log('Cart items:', cart.items.map(item => ({
-        //     productName: item.productId.productName,
-        //     size: item.size,  // Check if this exists
-        //     quantity: item.quantity
-        // })));
+     
 
         if (!cart || !cart.items || cart.items.length === 0) {
 
@@ -433,7 +429,7 @@ const createRazorpayOrder = async (req, res, next) => {
         const userId = req.session.user;
         const { addressId, couponCode } = req.body;
 
-        console.log(couponCode);
+        
         
 
         // Get cart and validate
