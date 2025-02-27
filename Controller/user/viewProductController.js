@@ -23,17 +23,17 @@ const getProductDetails = async (req, res) => {
             ]
         });
 
-        const productOffer = offers.find(offer => 
+        const productOffer = offers.find(offer =>
             offer.productIds && offer.productIds.some(id => id.equals(product._id))
         );
-        
-        const categoryOffer = offers.find(offer => 
+
+        const categoryOffer = offers.find(offer =>
             offer.categoryId && offer.categoryId.equals(product.categoriesId._id)
         );
 
         // Calculate final price with offers
         const finalPrice = calculateFinalPrice(product, categoryOffer, productOffer);
-        
+
         const processedProduct = {
             ...product.toObject(),
             discountPrice: finalPrice,
@@ -49,7 +49,7 @@ const getProductDetails = async (req, res) => {
             isActive: true,
             _id: { $ne: productId }
         })
-        .limit(4);
+            .limit(4);
 
         // // Process the product data
         // const processedProduct = {

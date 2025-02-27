@@ -2,29 +2,29 @@ import Offer from '../../model/offerModel.js';
 import Product from '../../model/productModel.js'
 import Category from '../../model/categoryModel.js';
 
-const getOffers = async (req,res,next)=>{
-    try{
+const getOffers = async (req, res, next) => {
+    try {
         const offers = await Offer.find()
-        .populate('productIds')
-        .populate('categoryId')
-        .sort('-createdAt');
+            .populate('productIds')
+            .populate('categoryId')
+            .sort('-createdAt');
 
 
-        const products= await Product.find({isActive:true});
-        const categories = await Category.find({isActive:true});
+        const products = await Product.find({ isActive: true });
+        const categories = await Category.find({ isActive: true });
 
-        res.render('admin/offers',{
+        res.render('admin/offers', {
             offers,
             products,
             categories
         });
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 };
 
-const createOffer = async (req,res,next)=>{
-    try{
+const createOffer = async (req, res, next) => {
+    try {
         const {
             name,
             type,
@@ -32,7 +32,7 @@ const createOffer = async (req,res,next)=>{
             discount,
             startDate,
             endDate,
-        }= req.body;
+        } = req.body;
 
         //validate required fields
         if (!name || !type || !itemIds || !discount || !startDate || !endDate) {
@@ -64,36 +64,36 @@ const createOffer = async (req,res,next)=>{
                 message: 'End date must be after start date'
             });
         }
-        
+
         //check for existing offers with date overlap
         let existingOffers;
-        if(type === 'produt'){
+        if (type === 'produt') {
             existingOffers = await Offer.find({
-                productIds:{$in:itemIds},
-                $or:[
+                productIds: { $in: itemIds },
+                $or: [
                     {
-                        startDate:{$lte:end},
-                        endDate:{$gte:start}
+                        startDate: { $lte: end },
+                        endDate: { $gte: start }
                     }
                 ]
             }).populate('productIds');
 
-            if(existingOffers.length>0){
+            if (existingOffers.length > 0) {
                 const products = await Product.find({
-                    _id:{$in:itemIds}
+                    _id: { $in: itemIds }
                 });
-                const conflictingProducts = products.filter(product=>
-                    existingOffers.some(offer=>
-                        offer.productIds.some(p=>p._id.toString()===product._id.toString())
+                const conflictingProducts = products.filter(product =>
+                    existingOffers.some(offer =>
+                        offer.productIds.some(p => p._id.toString() === product._id.toString())
                     )
                 );
 
                 return res.status(400).json({
-                    success:false,
-                    message:`following products already have offers for this period: ${conflictingProducts.map(p=>p.productName).join(', ')}`
+                    success: false,
+                    message: `following products already have offers for this period: ${conflictingProducts.map(p => p.productName).join(', ')}`
                 });
             }
-        }else if(type==='category'){
+        } else if (type === 'category') {
             existingOffers = await Offer.find({
                 categoryId: itemIds[0],
                 $or: [
@@ -116,46 +116,46 @@ const createOffer = async (req,res,next)=>{
         //create offer data
         const offerData = {
             name,
-            discount:Number(discount),
-            startDate:start,
-            endDate:end,
-            status:'active'
+            discount: Number(discount),
+            startDate: start,
+            endDate: end,
+            status: 'active'
         };
 
-        if(type==='category'){
+        if (type === 'category') {
             offerData.categoryId = itemIds[0];
-        }else{
+        } else {
             offerData.productIds = itemIds;
         }
 
         const offer = await Offer.create(offerData);
 
         //update products of its a product offer
-        if(type === 'product'){
+        if (type === 'product') {
             await Product.updateMany(
-                {_id:{$in:itemIds}},
+                { _id: { $in: itemIds } },
                 {
-                    offer:offer._id,
-                    offerApplied:true,
-                    offerType:'product'
+                    offer: offer._id,
+                    offerApplied: true,
+                    offerType: 'product'
                 }
             );
         }
 
         res.json({
-            success:true,
-            message:'offer created sucessfully',
+            success: true,
+            message: 'offer created sucessfully',
             offer
         });
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 }
 
 //update offer
-const updateOffer = async (req,res,next)=>{
-    try{
-        const {offerId}=req.params;
+const updateOffer = async (req, res, next) => {
+    try {
+        const { offerId } = req.params;
         const {
             name,
             type,
@@ -163,7 +163,7 @@ const updateOffer = async (req,res,next)=>{
             discount,
             startDate,
             endDate
-        }=req.body;
+        } = req.body;
 
         //validate dates
         const start = new Date(startDate);
@@ -205,8 +205,8 @@ const updateOffer = async (req,res,next)=>{
 
             if (existingOffers.length > 0) {
                 const products = await Product.find({ _id: { $in: itemIds } });
-                const conflictingProducts = products.filter(product => 
-                    existingOffers.some(offer => 
+                const conflictingProducts = products.filter(product =>
+                    existingOffers.some(offer =>
                         offer.productIds.some(p => p._id.toString() === product._id.toString())
                     )
                 );
@@ -216,7 +216,7 @@ const updateOffer = async (req,res,next)=>{
                     message: `Following products already have offers for this period: ${conflictingProducts.map(p => p.productName).join(', ')}`
                 });
             }
-        }else if (type === 'category') {
+        } else if (type === 'category') {
             existingOffers = await Offer.find({
                 _id: { $ne: offerId },
                 categoryId: itemIds[0],
@@ -238,31 +238,31 @@ const updateOffer = async (req,res,next)=>{
         }
 
         const existingOffer = await Offer.findById(offerId);
-        if(!existingOffer){
+        if (!existingOffer) {
             return res.status(404).json({
-                success:false,
-                message:'offer not found'
+                success: false,
+                message: 'offer not found'
             });
         }
 
         //remove offer reference from old products
-        if(existingOffer.productIds.length>0){
+        if (existingOffer.productIds.length > 0) {
             await Product.updateMany(
-                {_id:{$in:existingOffer.productIds}},
+                { _id: { $in: existingOffer.productIds } },
                 {
-                    offer:null,
-                    offerApplied:false,
-                    offerType:null
+                    offer: null,
+                    offerApplied: false,
+                    offerType: null
                 }
             );
         }
 
         //update offerdate 
-        const updateData ={
+        const updateData = {
             name,
-            discount:Number(discount),
-            startDate:start,
-            endDate:end
+            discount: Number(discount),
+            startDate: start,
+            endDate: end
 
         };
 
@@ -279,52 +279,52 @@ const updateOffer = async (req,res,next)=>{
         const updatedOffer = await Offer.findByIdAndUpdate(
             offerId,
             updateData,
-            {new:true}
+            { new: true }
         );
 
-        if(type==='product'){
+        if (type === 'product') {
             await Product.updateMany(
-                {_id:{$in:itemIds}},
+                { _id: { $in: itemIds } },
                 {
-                    offer:updatedOffer._id,
-                    offerApplied:true,
-                    offerType:'product'
+                    offer: updatedOffer._id,
+                    offerApplied: true,
+                    offerType: 'product'
                 }
             );
         }
 
         res.json({
-            success:true,
-            message:'Offer updated successfully',
-            offer:updatedOffer
+            success: true,
+            message: 'Offer updated successfully',
+            offer: updatedOffer
         });
 
 
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 };
 
-const deleteOffer = async(req,res,next)=>{
-    try{
-        const {offerId}= req.params;
+const deleteOffer = async (req, res, next) => {
+    try {
+        const { offerId } = req.params;
         const offer = await Offer.findById(offerId);
 
-        if(!offer){
+        if (!offer) {
             return res.status(404).json({
-                success:false,
-                message:'Offer not found'
+                success: false,
+                message: 'Offer not found'
             });
         }
 
         //remove offer fromm products
-        if(offer.productIds.length>0){
+        if (offer.productIds.length > 0) {
             await Product.updateMany(
-                {_id:{$in:offer.productIds}},
+                { _id: { $in: offer.productIds } },
                 {
-                    offer:null,
-                    offerApplied:false,
-                    offerType:null
+                    offer: null,
+                    offerApplied: false,
+                    offerType: null
                 }
             );
         }
@@ -335,12 +335,12 @@ const deleteOffer = async(req,res,next)=>{
             message: 'Offer deleted successfully'
         });
 
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 };
 
-export default{
+export default {
     getOffers,
     createOffer,
     updateOffer,

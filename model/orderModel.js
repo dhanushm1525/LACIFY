@@ -37,7 +37,7 @@ const orderSchema = new mongoose.Schema({
             type: Number,
             required: true
         },
-        order:{
+        order: {
             status: {
                 type: String,
                 enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned', 'refund processing'],
@@ -46,8 +46,8 @@ const orderSchema = new mongoose.Schema({
             statusHistory: [{
                 status: {
                     type: String,
-                    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 
-                           'returned', 'refund processing', 'return requested'],
+                    enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled',
+                        'returned', 'refund processing', 'return requested'],
                     required: true
                 },
                 date: {
@@ -136,11 +136,11 @@ const orderSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
-}, {timestamps: true}
+}, { timestamps: true }
 );
 
 // Pre-save middleware to generate orderCode
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
     if (!this.orderCode && this._id) {
         const day = this.createdAt.getDate().toString().padStart(2, '0');
         const month = (this.createdAt.getMonth() + 1).toString().padStart(2, '0');

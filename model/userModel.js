@@ -25,16 +25,15 @@ const userSchema = new mongoose.Schema({
 
     isVerified: { type: Boolean, default: false },
 
-    otp: { type: String},
+    otp: { type: String },
 
-    otpExpiresAt: {type: Date},
+    otpExpiresAt: { type: Date },
 
     otpAttempts: { type: Number, default: 0 },
 
     blocked: { type: Boolean, default: false },
 
-  },
-  { timestamps: true });
-  
-  export default mongoose.model('users', userSchema);
-  
+},
+    { timestamps: true });
+
+export default mongoose.model('users', userSchema);

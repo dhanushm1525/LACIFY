@@ -2,21 +2,21 @@ import Order from '../../model/orderModel.js';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit-table';
 
-const getSalesReport = async (req,res,next)=>{
-    try{
-        const {startDate , endDate, period} = req.query;
+const getSalesReport = async (req, res, next) => {
+    try {
+        const { startDate, endDate, period } = req.query;
 
         let query = {
-            'item.order.status':{$ne:'cancelled'},
-            'payment.paymentStatus':{$ne:'failed'}
+            'item.order.status': { $ne: 'cancelled' },
+            'payment.paymentStatus': { $ne: 'failed' }
         };
 
-        let dateRange= {};
+        let dateRange = {};
 
         //handle different periods types
-        if(period){
+        if (period) {
             const now = new Date();
-            switch(period){
+            switch (period) {
                 case 'daily':
                     dateRange.start = new Date(now.setHours(0, 0, 0, 0));
                     dateRange.end = new Date(now.setHours(23, 59, 59, 999));
@@ -34,71 +34,71 @@ const getSalesReport = async (req,res,next)=>{
                     dateRange.end = new Date();
                     break;
             }
-        }else if(startDate&&endDate){
-            dateRange.start = new Date(new Date(startDate).setHours(0,0,0,0));
-            dateRange.end = new Date(new Date(endDate).setHours(23,59,59,999));
+        } else if (startDate && endDate) {
+            dateRange.start = new Date(new Date(startDate).setHours(0, 0, 0, 0));
+            dateRange.end = new Date(new Date(endDate).setHours(23, 59, 59, 999));
 
         }
 
-        if(dateRange.start&&dateRange.end){
+        if (dateRange.start && dateRange.end) {
             query.createdAt = {
-                $gte:dateRange.start,
-                $lte:dateRange.end
+                $gte: dateRange.start,
+                $lte: dateRange.end
             };
         }
 
-         // Fetch orders with date range and populate user data
-         const orders = await Order.find(query)
-         .populate('userId', 'firstName lastName email')
-         .sort({ createdAt: -1 });
+        // Fetch orders with date range and populate user data
+        const orders = await Order.find(query)
+            .populate('userId', 'firstName lastName email')
+            .sort({ createdAt: -1 });
 
-     // Calculate metrics
-     const metrics = {
-         totalOrders: orders.length,
-         totalSales: orders.reduce((sum, order) => sum + order.totalAmount, 0),
-         totalDiscount: orders.reduce((sum, order) => {
-             const couponDiscount = order.coupon?.discount || 0;
-             return sum + couponDiscount;
-         }, 0),
-         netRevenue: orders.reduce((sum, order) => sum + order.totalAmount, 0)
-     };
+        // Calculate metrics
+        const metrics = {
+            totalOrders: orders.length,
+            totalSales: orders.reduce((sum, order) => sum + order.totalAmount, 0),
+            totalDiscount: orders.reduce((sum, order) => {
+                const couponDiscount = order.coupon?.discount || 0;
+                return sum + couponDiscount;
+            }, 0),
+            netRevenue: orders.reduce((sum, order) => sum + order.totalAmount, 0)
+        };
 
-     // Calculate average order value
-     metrics.averageOrderValue = orders.length ? metrics.netRevenue / orders.length : 0;
+        // Calculate average order value
+        metrics.averageOrderValue = orders.length ? metrics.netRevenue / orders.length : 0;
 
-     // Group orders by date
-     const dailyData = orders.reduce((acc, order) => {
-         const date = order.createdAt.toISOString().split('T')[0];
-         if (!acc[date]) {
-             acc[date] = {
-                 orders: 0,
-                 sales: 0,
-                 discount: 0,
-                 netRevenue: 0
-             };
-         }
-         
-         acc[date].orders++;
-         acc[date].sales += order.totalAmount;
-         acc[date].discount += (order.coupon?.discount || 0);
-         acc[date].netRevenue += order.totalAmount;
-         
-         return acc;
-     }, {});
+        // Group orders by date
+        const dailyData = orders.reduce((acc, order) => {
+            const date = order.createdAt.toISOString().split('T')[0];
+            if (!acc[date]) {
+                acc[date] = {
+                    orders: 0,
+                    sales: 0,
+                    discount: 0,
+                    netRevenue: 0
+                };
+            }
 
-     res.render('admin/salesReport', {
-         orders,
-         metrics,
-         dailyData,
-         dateRange,
-         period: period || 'custom'
-     });
-    }catch(error){
+            acc[date].orders++;
+            acc[date].sales += order.totalAmount;
+            acc[date].discount += (order.coupon?.discount || 0);
+            acc[date].netRevenue += order.totalAmount;
+
+            return acc;
+        }, {});
+
+        res.render('admin/salesReport', {
+            orders,
+            metrics,
+            dailyData,
+            dateRange,
+            period: period || 'custom'
+        });
+    } catch (error) {
         next(error)
     }
 };
 
-const downloadExcel=async (req, res,next) => {
+const downloadExcel = async (req, res, next) => {
     try {
         const { startDate, endDate } = req.query;
 
@@ -113,9 +113,9 @@ const downloadExcel=async (req, res,next) => {
             'items.order.status': { $nin: ['pending', 'cancelled'] },
             'payment.paymentStatus': { $nin: ['failed', 'cancelled'] }
         })
-        .populate('userId', 'firstName lastName email')
-        .populate('items.product', 'productName')
-        .lean();
+            .populate('userId', 'firstName lastName email')
+            .populate('items.product', 'productName')
+            .lean();
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Sales Report');
@@ -144,7 +144,7 @@ const downloadExcel=async (req, res,next) => {
                 orderId: order.orderCode,
                 date: new Date(order.createdAt).toLocaleDateString(),
                 customer: `${order.userId?.firstName || ''} ${order.userId?.lastName || ''}`,
-                items: order.items.map(item => 
+                items: order.items.map(item =>
                     `${item.quantity}x ${item.product?.productName || 'Unknown'} `
                 ).join('\n'),
                 status: order.items[0]?.order?.status || 'N/A',
@@ -168,7 +168,7 @@ const downloadExcel=async (req, res,next) => {
 };
 
 
-const downloadPDF =  async (req, res,next) => {
+const downloadPDF = async (req, res, next) => {
     try {
         const { startDate, endDate } = req.query;
         const startDay = new Date(startDate);
@@ -182,9 +182,9 @@ const downloadPDF =  async (req, res,next) => {
             'items.order.status': { $nin: ['pending', 'cancelled'] },
             'payment.paymentStatus': { $nin: ['failed', 'cancelled'] }
         })
-        .populate('userId', 'firstName lastName email')
-        .populate('items.product', 'name')
-        .lean();
+            .populate('userId', 'firstName lastName email')
+            .populate('items.product', 'name')
+            .lean();
 
         const doc = new PDFDocument();
 

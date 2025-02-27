@@ -89,34 +89,34 @@ const addToWishlist = async (req, res, next) => {
 };
 
 
-const removeWishlist = async (req,res,next)=>{
+const removeWishlist = async (req, res, next) => {
 
-    
-    try{
+
+    try {
         const userId = req.session.user;
         const productId = req.params.productId;
 
-        
-        
-        
-        const wish = await Wishlist.updateOne(
-            {userId},
-            {$pull:{items:{productId}}}
-        );
-       
 
-        if(wish.modifiedCount===0){
+
+
+        const wish = await Wishlist.updateOne(
+            { userId },
+            { $pull: { items: { productId } } }
+        );
+
+
+        if (wish.modifiedCount === 0) {
             return res.status(404).json({
-                success:false,
-                message:'Product not found in wishlist'
+                success: false,
+                message: 'Product not found in wishlist'
             });
         }
 
         res.status(200).json({
-            success:true,
-            message:'Product removed from wishlist'
+            success: true,
+            message: 'Product removed from wishlist'
         });
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 }

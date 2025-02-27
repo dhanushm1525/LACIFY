@@ -1,16 +1,16 @@
 import Coupon from '../../model/couponModel.js';
 
-const getCoupons = async (req,res)=>{
-    try{
-        const coupons = await Coupon.find().sort({createdAt:-1});
-        res.render('admin/coupon',{coupons});
-    }catch(error){
+const getCoupons = async (req, res) => {
+    try {
+        const coupons = await Coupon.find().sort({ createdAt: -1 });
+        res.render('admin/coupon', { coupons });
+    } catch (error) {
         next(error)
     }
 };
 
-const addCoupons = async (req,res,next)=>{
-    try{
+const addCoupons = async (req, res, next) => {
+    try {
         const {
             code,
             description,
@@ -24,69 +24,69 @@ const addCoupons = async (req,res,next)=>{
         } = req.body;
 
 
-            // Validate description
-            if (!description || description.trim().length === 0) {
-                return res.status(400).json({ message: 'Description is required' });
-            }
+        // Validate description
+        if (!description || description.trim().length === 0) {
+            return res.status(400).json({ message: 'Description is required' });
+        }
 
-            if (description.length > 100) {
-                return res.status(400).json({ message: 'Description must be less than 100 characters' });
-            }
+        if (description.length > 100) {
+            return res.status(400).json({ message: 'Description must be less than 100 characters' });
+        }
 
-            // Validate discount percentage
-            if (discountPercentage < 0 || discountPercentage > 100) {
-                return res.status(400).json({ message: 'Discount percentage must be between 0 and 100' });
-            }
+        // Validate discount percentage
+        if (discountPercentage < 0 || discountPercentage > 100) {
+            return res.status(400).json({ message: 'Discount percentage must be between 0 and 100' });
+        }
 
-            // Check if coupon code already exists
-            const existingCoupon = await Coupon.findOne({ code: code.toUpperCase() });
-            if (existingCoupon) {
-                return res.status(400).json({ message: 'Coupon code already exists' });
-            }        
+        // Check if coupon code already exists
+        const existingCoupon = await Coupon.findOne({ code: code.toUpperCase() });
+        if (existingCoupon) {
+            return res.status(400).json({ message: 'Coupon code already exists' });
+        }
 
-            //create new coupon
-            const newCoupon = new Coupon({
-                code:code.toUpperCase(),
-                description:description.trim(),
-                discountPercentage,
-                minimumPurchase:minimumPurchase||0,
-                maximumDiscount:maximumDiscount||null,
-                startDate,
-                expiryDate,
-                totalCoupon:totalCoupon||1,
-                userUsageLimit:userUsageLimit||1
-            });
+        //create new coupon
+        const newCoupon = new Coupon({
+            code: code.toUpperCase(),
+            description: description.trim(),
+            discountPercentage,
+            minimumPurchase: minimumPurchase || 0,
+            maximumDiscount: maximumDiscount || null,
+            startDate,
+            expiryDate,
+            totalCoupon: totalCoupon || 1,
+            userUsageLimit: userUsageLimit || 1
+        });
 
-            await newCoupon.save();
-            res.status(200).json({
-                message:'Coupon added successfully'
-            });
+        await newCoupon.save();
+        res.status(200).json({
+            message: 'Coupon added successfully'
+        });
 
 
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 };
 
-const deleteCoupon = async (req,res,next)=>{
-    try{
+const deleteCoupon = async (req, res, next) => {
+    try {
         const deletedCoupon = await Coupon.findByIdAndDelete(req.params.id);
-        if(!deletedCoupon){
+        if (!deletedCoupon) {
             return res.status(404).json({
-                message:'coupon not found'
+                message: 'coupon not found'
             });
         }
 
         res.status(200).json({
-            message:'Coupon deleted successfully'
+            message: 'Coupon deleted successfully'
         });
-    }catch(error){
+    } catch (error) {
         next(error)
     }
 };
 
 
-export default{
+export default {
     getCoupons,
     addCoupons,
     deleteCoupon

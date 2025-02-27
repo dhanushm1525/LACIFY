@@ -7,23 +7,23 @@ const checkSession = (req, res, next) => {
     }
 }
 
-const isLogin  = (req, res, next)=>{
- 
-    if(req.session.isAdmin){
+const isLogin = (req, res, next) => {
+
+    if (req.session.isAdmin) {
         res.redirect('/admin/dashboard')
-    }else{
+    } else {
         next()
     }
 }
 
-const errorHandler = (err , req , res, next)=>{
-    console.error('Error:',err);
+const errorHandler = (err, req, res, next) => {
+    console.error('Error:', err);
 
-    res.status(err.status||500).json({
-        success:false,
-        message: err.message||'Internal server error'
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Internal server error'
     });
 }
 
 
-export default { isLogin, checkSession , errorHandler}
+export default { isLogin, checkSession, errorHandler }

@@ -38,7 +38,7 @@ const offerSchema = new mongoose.Schema({
 });
 
 // Virtual to determine if it's a category or product offer
-offerSchema.virtual('offerType').get(function() {
+offerSchema.virtual('offerType').get(function () {
     return this.categoryId ? 'category' : 'product';
 });
 

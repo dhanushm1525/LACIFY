@@ -65,7 +65,7 @@ const getDashboard = async (req, res, next) => {
         if (timeFrame === 'daily') {
             //24 hour format
             chartData = Array.from({ length: 24 }, (_, hour) => {
-                const revenue = revenueData.find(d =>d._id === hour);
+                const revenue = revenueData.find(d => d._id === hour);
                 return {
                     time: `${hour}:00`,
                     revenue: revenue ? revenue.totalRevenue : 0
@@ -319,7 +319,7 @@ const getDashboard = async (req, res, next) => {
     }
 };
 
-const getDashboardData = async (req, res,next) => {
+const getDashboardData = async (req, res, next) => {
     try {
         const timeFrame = req.query.timeFrame || 'yearly';
         const productSort = req.query.productSort || 'units';
@@ -334,7 +334,7 @@ const getDashboardData = async (req, res,next) => {
                 startDate.setHours(0, 0, 0, 0);
                 endDate = new Date(currentDate);
                 endDate.setHours(23, 59, 59, 999);
-                
+
                 // Get hourly revenue data with IST adjustment
                 const dailyData = await Order.aggregate([
                     {
@@ -515,13 +515,13 @@ const getDashboardData = async (req, res,next) => {
                 startDate.setHours(0, 0, 0, 0);
                 endDate = new Date(req.query.endDate);
                 endDate.setHours(23, 59, 59, 999);
-                
+
                 // Calculate date difference
                 const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
                 // Get revenue data first
                 let revenueData;
-                
+
                 if (daysDiff <= 1) {
                     // Single day - show hourly data
                     groupBy = { $hour: '$orderDate' };
@@ -550,11 +550,11 @@ const getDashboardData = async (req, res,next) => {
                     });
                 } else if (daysDiff <= 31) {
                     // Up to a month - show daily data
-                    groupBy = { 
-                        $dateToString: { 
-                            format: '%Y-%m-%d', 
-                            date: '$orderDate' 
-                        } 
+                    groupBy = {
+                        $dateToString: {
+                            format: '%Y-%m-%d',
+                            date: '$orderDate'
+                        }
                     };
                     revenueData = await Order.aggregate([
                         {
@@ -586,11 +586,11 @@ const getDashboardData = async (req, res,next) => {
                     }
                 } else {
                     // More than a month - show monthly data
-                    groupBy = { 
-                        $dateToString: { 
-                            format: '%Y-%m', 
-                            date: '$orderDate' 
-                        } 
+                    groupBy = {
+                        $dateToString: {
+                            format: '%Y-%m',
+                            date: '$orderDate'
+                        }
                     };
                     revenueData = await Order.aggregate([
                         {
@@ -699,10 +699,10 @@ const getDashboardData = async (req, res,next) => {
                             imageUrl: { $arrayElemAt: ['$productDetails.imageUrl', 0] }
                         }
                     },
-                    { 
-                        $sort: productSort === 'revenue' ? 
-                            { totalRevenue: -1 } : 
-                            { totalQuantity: -1 } 
+                    {
+                        $sort: productSort === 'revenue' ?
+                            { totalRevenue: -1 } :
+                            { totalQuantity: -1 }
                     },
                     { $limit: 3 }
                 ]);
@@ -745,23 +745,23 @@ const getDashboardData = async (req, res,next) => {
                             _id: '$categoryDetails._id',
                             categoryName: { $first: '$categoryDetails.name' },
                             totalQuantity: { $sum: '$items.quantity' },
-                            totalRevenue: { 
-                                $sum: { 
+                            totalRevenue: {
+                                $sum: {
                                     $multiply: ['$items.price', '$items.quantity']
-                                } 
+                                }
                             }
                         }
                     },
                     {
                         $match: {
-                            '_id': { 
-                                $in: await Category.find({ isActive: true }).distinct('_id') 
+                            '_id': {
+                                $in: await Category.find({ isActive: true }).distinct('_id')
                             }
                         }
                     },
                     {
-                        $sort: categorySort === 'revenue' ? 
-                            { totalRevenue: -1 } : 
+                        $sort: categorySort === 'revenue' ?
+                            { totalRevenue: -1 } :
                             { totalQuantity: -1 }
                     },
                     { $limit: 3 }
@@ -826,10 +826,10 @@ const getDashboardData = async (req, res,next) => {
         });
 
     } catch (error) {
-     next(error)
+        next(error)
+    };
 };
-};
 
 
 
-export default { getDashboard,getDashboardData }
+export default { getDashboard, getDashboardData }

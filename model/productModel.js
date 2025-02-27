@@ -52,7 +52,7 @@ const productSchema = new mongoose.Schema({
         }],
         required: true,
         validate: {
-            validator: function(sizeStock) {
+            validator: function (sizeStock) {
                 return sizeStock && sizeStock.length > 0;
             },
             message: 'At least one size with stock must be selected'
@@ -79,7 +79,7 @@ const productSchema = new mongoose.Schema({
         enum: ['product', 'category', 'none'],
         default: 'none'
     }
-}, 
-{ timestamps: true });
+},
+    { timestamps: true });
 
 export default mongoose.model("Product", productSchema);

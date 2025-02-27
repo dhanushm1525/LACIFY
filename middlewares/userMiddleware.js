@@ -9,7 +9,7 @@ const checkSession = async (req, res, next) => {
 
         // Verify user exists and is active
         const user = await userModel.findById(req.session.user);
-        
+
         if (!user) {
             // User no longer exists
             req.session.destroy();
@@ -42,17 +42,17 @@ const isLogin = async (req, res, next) => {
     }
 }
 
-const errorHandler = (err , req , res, next)=>{
-    console.error('Error:',err);
+const errorHandler = (err, req, res, next) => {
+    console.error('Error:', err);
 
-    res.status(err.status||500).json({
-        success:false,
-        message: err.message||'Internal server error'
+    res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Internal server error'
     });
 }
 
-export default { 
-    isLogin, 
-    checkSession ,
+export default {
+    isLogin,
+    checkSession,
     errorHandler
 }

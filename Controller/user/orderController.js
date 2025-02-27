@@ -600,36 +600,36 @@ const verifyRetryPayment = async (req, res, next) => {
             });
         }
 
-               // Update product stock for each item in the order
-               for (const item of order.items) {
-                await productSchema.findByIdAndUpdate(
-                    item.product._id,
-                    { $inc: { stock: -item.quantity } }
-                );
-            }
+        // Update product stock for each item in the order
+        for (const item of order.items) {
+            await productSchema.findByIdAndUpdate(
+                item.product._id,
+                { $inc: { stock: -item.quantity } }
+            );
+        }
 
-            //update order with successfull payment 
-            await orderSchema.findByIdAndUpdate(orderId,{
-                'payment.paymentStatus': 'completed',
-                'payment.razorpayTransaction': {
-                    razorpayOrderId: razorpay_order_id,
-                    razorpayPaymentId: razorpay_payment_id,
-                    razorpaySignature: razorpay_signature
-                },
-                'items.$[].order.status': 'processing',
-                $push: {
-                    'items.$[].order.statusHistory': {
-                        status: 'processing',
-                        date: new Date(),
-                        comment: 'Payment successful, order processing'
-                    }
+        //update order with successfull payment 
+        await orderSchema.findByIdAndUpdate(orderId, {
+            'payment.paymentStatus': 'completed',
+            'payment.razorpayTransaction': {
+                razorpayOrderId: razorpay_order_id,
+                razorpayPaymentId: razorpay_payment_id,
+                razorpaySignature: razorpay_signature
+            },
+            'items.$[].order.status': 'processing',
+            $push: {
+                'items.$[].order.statusHistory': {
+                    status: 'processing',
+                    date: new Date(),
+                    comment: 'Payment successful, order processing'
                 }
-            });
+            }
+        });
 
-            res.json({
-                success:true,
-                message:'Payment verified successfully'
-            });
+        res.json({
+            success: true,
+            message: 'Payment verified successfully'
+        });
 
 
 

@@ -1,12 +1,12 @@
 import Coupon from '../../model/couponModel.js';
 import userSchema from '../../model/userModel.js';
 
-const getCoupons= async (req, res,next) => {
+const getCoupons = async (req, res, next) => {
     try {
         const currentDate = new Date();
 
         const user = await userSchema.findById(req.session.user);
-        
+
         // Find active coupons that haven't expired
         const coupons = await Coupon.find({
             isActive: true,
@@ -21,12 +21,12 @@ const getCoupons= async (req, res,next) => {
         });
 
         res.render('user/coupon', { coupons: availableCoupons, user });
-        
+
     } catch (error) {
         next(error)
     }
 };
 
-export default{
+export default {
     getCoupons
 }

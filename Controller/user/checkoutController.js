@@ -41,7 +41,7 @@ const getCheckoutPage = async (req, res) => {
                 select: 'productName size price'
             });
 
-     
+
 
         if (!cart || !cart.items || cart.items.length === 0) {
 
@@ -137,7 +137,7 @@ const placeOrder = async (req, res) => {
 
         // Calculate the total amount
         const cartTotal = cart.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-        
+
         // Calculate coupon discount
         let couponDiscount = 0;
         if (couponCode) {
@@ -429,8 +429,8 @@ const createRazorpayOrder = async (req, res, next) => {
         const userId = req.session.user;
         const { addressId, couponCode } = req.body;
 
-        
-        
+
+
 
         // Get cart and validate
         const cart = await cartSchema.findOne({ userId })
@@ -566,7 +566,7 @@ const verifyPayment = async (req, res, next) => {
 
         // Handle payment retry case
         if (orderId) {
-            const order = await orderSchema.findOne({ 
+            const order = await orderSchema.findOne({
                 _id: orderId,
                 userId,
                 'payment.method': 'razorpay'
@@ -676,7 +676,7 @@ const verifyPayment = async (req, res, next) => {
     }
 };
 
-const handlePaymentFailure= async (req, res,next) => {
+const handlePaymentFailure = async (req, res, next) => {
     try {
         const { error, razorpay_order_id } = req.body;
         const userId = req.session.user;
@@ -748,7 +748,7 @@ const handlePaymentFailure= async (req, res,next) => {
         });
 
     } catch (error) {
-       next(error)
+        next(error)
     }
 }
 

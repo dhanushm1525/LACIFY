@@ -11,13 +11,13 @@ const validateProductName = (name) => {
     if (trimmedName.length < 3 || trimmedName.length > 10) {
         throw new Error('Product name must be between 3 and 50 characters');
     }
-    
+
     // Allow letters, numbers, spaces, and basic punctuation
     const nameRegex = /^[a-zA-Z0-9\s]+$/;
     if (!nameRegex.test(trimmedName)) {
         throw new Error('Product name contains invalid characters');
     }
-    
+
     return trimmedName;
 };
 
@@ -27,18 +27,18 @@ const validateBrand = (brand) => {
     if (trimmedBrand.length < 2 || trimmedBrand.length > 10) {
         throw new Error('Brand name must be between 2 and 30 characters');
     }
-    
+
     // Allow letters, numbers, spaces, and hyphens
     const brandRegex = /^[a-zA-Z0-9\s]+$/;
     if (!brandRegex.test(trimmedBrand)) {
         throw new Error('Brand name contains invalid characters');
     }
-    
+
     return trimmedBrand;
 };
 
 // Render Product Management Page
-const renderProductPage = async (req, res,next) => {
+const renderProductPage = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = 10; // Items per page
@@ -84,7 +84,7 @@ const renderProductPage = async (req, res,next) => {
 };
 
 // Add New Product
-const addProduct = async (req, res,next) => {
+const addProduct = async (req, res, next) => {
     const uploadMultiple = upload.array('images', 3);
 
     uploadMultiple(req, res, async (err) => {
@@ -156,7 +156,7 @@ const addProduct = async (req, res,next) => {
                 productName: validatedName,
                 _id: { $ne: req.params.id } // Exclude current product when updating
             });
-            
+
             if (existingProduct) {
                 return res.status(400).json({ message: 'A product with this name already exists' });
             }
@@ -188,7 +188,7 @@ const addProduct = async (req, res,next) => {
                     }
                 });
             }
-            
+
             console.error('Error adding product:', error);
             res.status(400).json({ message: error.message || 'Error adding product' });
         }
@@ -196,7 +196,7 @@ const addProduct = async (req, res,next) => {
 };
 
 // Get Product Details for Editing
-const getProductDetails = async (req, res,next) => {
+const getProductDetails = async (req, res, next) => {
     try {
         const product = await Product.findById(req.params.id)
             .populate('categoriesId');
@@ -223,7 +223,7 @@ const getProductDetails = async (req, res,next) => {
         };
 
         // Log the response for debugging
-       
+
 
         res.json(sanitizedProduct);
     } catch (error) {
@@ -232,7 +232,7 @@ const getProductDetails = async (req, res,next) => {
 };
 
 // Update Product
-const updateProduct = async (req, res,next) => {
+const updateProduct = async (req, res, next) => {
     const uploadMultiple = upload.array('images', 3);
 
     uploadMultiple(req, res, async (err) => {
@@ -241,16 +241,16 @@ const updateProduct = async (req, res,next) => {
         }
 
         try {
-            const { 
-                productId, 
-                productName, 
-                brand, 
-                categoriesId, 
-                description, 
-                price, 
-                sizeStock 
+            const {
+                productId,
+                productName,
+                brand,
+                categoriesId,
+                description,
+                price,
+                sizeStock
             } = req.body;
-            
+
             // Get existing product
             const existingProduct = await Product.findById(productId);
             if (!existingProduct) {
@@ -277,13 +277,13 @@ const updateProduct = async (req, res,next) => {
 
             // Handle image updates
             let updatedImageUrls = [...existingProduct.imageUrl];
-            
+
             if (req.files && req.files.length > 0) {
                 // For each new image uploaded
                 req.files.forEach((file, index) => {
                     // Replace the image URL at the corresponding index
                     updatedImageUrls[index] = `/uploads/products/${file.filename}`;
-                    
+
                     // Delete the old image file
                     const oldImageUrl = existingProduct.imageUrl[index];
                     if (oldImageUrl) {
@@ -326,14 +326,14 @@ const updateProduct = async (req, res,next) => {
                     }
                 });
             }
-            
+
             res.status(500).json({ message: error.message || 'Error updating product' });
         }
     });
 };
 
 // Toggle Product Status
-const toggleProductStatus = async (req, res,next) => {
+const toggleProductStatus = async (req, res, next) => {
     try {
         const product = await Product.findById(req.params.id);
 
