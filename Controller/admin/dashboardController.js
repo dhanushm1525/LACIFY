@@ -179,7 +179,7 @@ const getDashboard = async (req, res, next) => {
             Math.round(((currentMonthTotal - previousMonthTotal) / previousMonthTotal) * 100);
 
 
-        // Get top 3 selling products
+        // Get top selling products
         const topProducts = await Order.aggregate([
             {
                 $match: {
@@ -224,10 +224,10 @@ const getDashboard = async (req, res, next) => {
                     { totalRevenue: -1 } :
                     { totalQuantity: -1 }
             },
-            { $limit: 3 }
+            { $limit: 10 }
         ]);
 
-        // Get top 3 selling categories with dynamic sorting
+        // Get top  selling categories with dynamic sorting
         const topCategories = await Order.aggregate([
             {
                 $match: {
@@ -297,7 +297,7 @@ const getDashboard = async (req, res, next) => {
                     { totalRevenue: -1 } :  // Sort by total revenue if revenue is selected
                     { totalQuantity: -1 }   // Sort by total quantity if units is selected
             },
-            { $limit: 3 }
+            { $limit: 10 }
         ]);
 
         res.render('admin/dashboard', {
@@ -704,7 +704,7 @@ const getDashboardData = async (req, res, next) => {
                             { totalRevenue: -1 } :
                             { totalQuantity: -1 }
                     },
-                    { $limit: 3 }
+                    { $limit: 10 }
                 ]);
 
                 // Get top categories with proper sorting
@@ -764,7 +764,7 @@ const getDashboardData = async (req, res, next) => {
                             { totalRevenue: -1 } :
                             { totalQuantity: -1 }
                     },
-                    { $limit: 3 }
+                    { $limit: 10 }
                 ]);
 
                 return res.json({

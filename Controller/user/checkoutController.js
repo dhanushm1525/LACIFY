@@ -26,8 +26,6 @@ function calculateProportionalDiscounts(items, totalDiscount) {
 
 const getCheckoutPage = async (req, res) => {
     try {
-
-
         //get users addresses
         const addresses = await addressSchema.find({
             userId: req.session.user
@@ -38,55 +36,33 @@ const getCheckoutPage = async (req, res) => {
             .populate({
                 path: 'items.productId',
                 model: 'Product',
-                select: 'productName size price'
+                select: 'productName size price imageUrl'
             });
 
-
-
         if (!cart || !cart.items || cart.items.length === 0) {
-
             return res.redirect('/cart');
         }
 
-        //populate product details and calculate subtotals
-        const populatedCart = await cartSchema.findOne({ userId: req.session.user })
-            .populate({
-                path: 'items.productId',
-                model: 'Product',
-                select: 'productName imageUrl price stock'
-            });
-
-
-        //check stock availability with detailed logging
-        const stockValidationResults = populatedCart.items.map(item => ({
-            productName: item.productId.productName,
-            requested: item.quantity,
-            available: item.productId.stock,
-            hasError: item.productId.stock < item.quantity
-        }));
-
-        const hasStockError = stockValidationResults.some(item => item.hasError);
-
-        if (hasStockError) {
-
-            // Store the detailed error information in session
-            req.session.stockError = stockValidationResults.filter(item => item.hasError);
-            return res.redirect('/cart?error=stock');
-        }
-
-
-
         //format cart items for the template 
-        const cartItems = populatedCart.items.map(item => ({
-            product: {
-                _id: item.productId._id,
-                productName: item.productId.productName,
-                imageUrl: item.productId.imageUrl,
-            },
-            quantity: item.quantity,
-            price: item.price,
-            subtotal: item.quantity * item.price
-        }));
+        const cartItems = cart.items.map(item => {
+            // Find the size data for this item
+            const sizeData = item.productId.size ? 
+                item.productId.size.find(s => s.size === item.size) : 
+                null;
+
+            return {
+                product: {
+                    _id: item.productId._id,
+                    productName: item.productId.productName,
+                    imageUrl: item.productId.imageUrl,
+                },
+                size: item.size,
+                sizeData: sizeData, // Include the size data with stock information
+                quantity: item.quantity,
+                price: item.price,
+                subtotal: item.quantity * item.price
+            };
+        });
 
         //calculate total
         const total = cartItems.reduce((sum, item) => sum + item.subtotal, 0);
@@ -133,6 +109,23 @@ const placeOrder = async (req, res) => {
                 success: false,
                 message: 'Cart is empty'
             });
+        }
+
+        // Check stock availability for each item's specific size
+        for (const item of cart.items) {
+            const sizeData = item.productId.size.find(s => s.size === item.size);
+            if (!sizeData) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Size ${item.size} not found for product ${item.productId.productName}`
+                });
+            }
+            if (sizeData.stock < item.quantity) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient stock for ${item.productId.productName} in size ${item.size}. Available: ${sizeData.stock}, Requested: ${item.quantity}`
+                });
+            }
         }
 
         // Calculate the total amount
@@ -207,10 +200,12 @@ const placeOrder = async (req, res) => {
             });
         }
 
+        
+
         const order = await orderSchema.create({
             userId,
-            items: orderItems,  // Now using discounted items
-            totalAmount: Math.round(finalAmount), // Using final amount with discount
+            items: orderItems,  
+            totalAmount: Math.round(finalAmount), 
 
             shippingAddress: {
                 fullName: address.fullName,
@@ -295,35 +290,35 @@ const applyCoupon = async (req, res, next) => {
         if (!coupon) {
             return res.status(400).json({
                 success: false,
-                message: 'invalid or expired coupon'
+                message: 'Invalid or expired coupon'
             });
         }
 
-        //check if coupon limit is reached
-        if (coupon.totalCoupon && coupon.usedCouponCount >= coupon.totalCoupon) {
-            return res.status(400).json({
-                success: false,
-                message: 'Coupon limit has been reached'
-            });
+        // Check total coupon usage limit first
+        if (coupon.totalCoupon !== null) {
+            if (coupon.usedCouponCount >= coupon.totalCoupon) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Coupon limit has been exceeded. This coupon is no longer available.'
+                });
+            }
         }
 
-        //check user usage limit 
+        // Check individual user usage limit
         const userUsageCount = coupon.usedBy.filter(
             usage => usage.userId.toString() === userId.toString()
         ).length;
 
-
         if (userUsageCount >= coupon.userUsageLimit) {
             return res.status(400).json({
                 success: false,
-                message: 'You have already used this coupon'
+                message: `You have exceeded the usage limit (${coupon.userUsageLimit}) for this coupon`
             });
         }
 
         //get cart total 
         const cart = await cartSchema.findOne({ userId })
             .populate('items.productId');
-
 
         const cartTotal = cart.items.reduce(
             (sum, item) => sum + (item.quantity * item.price),
@@ -334,10 +329,9 @@ const applyCoupon = async (req, res, next) => {
         if (cartTotal < coupon.minimumPurchase) {
             return res.status(400).json({
                 success: false,
-                message: `Minimum purchase of ₹${coupon.minimumPurchase}required `
+                message: `Minimum purchase of ₹${coupon.minimumPurchase} required`
             });
         }
-
 
         //calculate discount 
         let discount = (cartTotal * coupon.discountPercentage) / 100;
@@ -345,18 +339,12 @@ const applyCoupon = async (req, res, next) => {
             discount = Math.min(discount, coupon.maximumDiscount);
         }
 
-
         res.json({
             success: true,
             discount,
             couponCode: coupon.code,
             message: 'Coupon applied successfully'
         });
-
-
-
-
-
 
     } catch (error) {
         next(error)
@@ -429,9 +417,6 @@ const createRazorpayOrder = async (req, res, next) => {
         const userId = req.session.user;
         const { addressId, couponCode } = req.body;
 
-
-
-
         // Get cart and validate
         const cart = await cartSchema.findOne({ userId })
             .populate('items.productId');
@@ -441,6 +426,23 @@ const createRazorpayOrder = async (req, res, next) => {
                 success: false,
                 message: 'Cart is empty'
             });
+        }
+
+        // Check stock availability for each item's specific size
+        for (const item of cart.items) {
+            const sizeData = item.productId.size.find(s => s.size === item.size);
+            if (!sizeData) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Size ${item.size} not found for product ${item.productId.productName}`
+                });
+            }
+            if (sizeData.stock < item.quantity) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient stock for ${item.productId.productName} in size ${item.size}. Available: ${sizeData.stock}, Requested: ${item.quantity}`
+                });
+            }
         }
 
         // Get address

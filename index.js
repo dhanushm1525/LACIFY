@@ -10,6 +10,7 @@ import {log} from "mercedlogger";
 import './utils/googleAuth.js';
 import connnectDb from "./connections/connection.js";
 
+
 config();
 
 const app = express()

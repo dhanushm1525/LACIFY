@@ -147,7 +147,6 @@ const addToCart = async (req, res) => {
     try {
         const userId = req.session.user;
 
-
         if (!userId) {
             return res.status(401).json({
                 success: false,
@@ -156,7 +155,6 @@ const addToCart = async (req, res) => {
         }
 
         const { productId, quantity, size } = req.body;
-
 
         // Validate size is provided
         if (!size) {
@@ -169,6 +167,31 @@ const addToCart = async (req, res) => {
         let cart = await cartSchema.findOne({ userId });
         const product = await productSchema.findById(productId);
 
+        // Check if product exists and is active
+        if (!product || !product.isActive) {
+            return res.status(400).json({
+                success: false,
+                message: 'Product is not available'
+            });
+        }
+
+        // Find the specific size in product's size array
+        const sizeData = product.size.find(s => s.size === size);
+        if (!sizeData) {
+            return res.status(400).json({
+                success: false,
+                message: 'Selected size is not available'
+            });
+        }
+
+        // Check if requested quantity is available for the specific size
+        if (sizeData.stock < parseInt(quantity)) {
+            return res.status(400).json({
+                success: false,
+                message: `Only ${sizeData.stock} units available for size ${size}`
+            });
+        }
+
         if (!cart) {
             cart = new cartSchema({
                 userId,
@@ -176,7 +199,7 @@ const addToCart = async (req, res) => {
                     productId,
                     quantity: parseInt(quantity),
                     price: product.price,
-                    size: size  // Make sure size is included
+                    size: size
                 }]
             });
         } else {
@@ -189,6 +212,14 @@ const addToCart = async (req, res) => {
             if (existingItem) {
                 //calculate new quantity
                 const newQuantity = existingItem.quantity + parseInt(quantity);
+
+                // Check if new total quantity exceeds available stock
+                if (sizeData.stock < newQuantity) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot add more items. Only ${sizeData.stock} units available for size ${size}`
+                    });
+                }
 
                 //check if new quantity exceeds limit
                 if (newQuantity > 3) {
@@ -207,15 +238,13 @@ const addToCart = async (req, res) => {
                     productId,
                     quantity: parseInt(quantity),
                     price: product.price,
-                    size: size,  // Make sure size is included
+                    size: size,
                     subtotal: parseInt(quantity) * product.price
                 });
             }
         }
 
         const savedCart = await cart.save();
-
-
         res.json({ success: true, message: 'Item added to cart' });
 
     } catch (error) {
@@ -236,7 +265,22 @@ const updateQuantity = async (req, res) => {
 
         if (quantity < 1) {
             return res.status(400).json({
-                message: 'Quantity must be atleast one'
+                message: 'Quantity must be at least one'
+            });
+        }
+
+        // Find the cart and product
+        const cart = await cartSchema.findOne({ userId });
+        if (!cart) {
+            return res.status(404).json({
+                message: 'Cart not found'
+            });
+        }
+
+        const cartItem = cart.items.find(item => item.productId.toString() === productId);
+        if (!cartItem) {
+            return res.status(404).json({
+                message: 'Product not found in cart'
             });
         }
 
@@ -252,33 +296,26 @@ const updateQuantity = async (req, res) => {
             });
         }
 
-        if (product.stock < quantity) {
+        // Find the specific size in product's size array
+        const sizeData = product.size.find(s => s.size === cartItem.size);
+        if (!sizeData) {
             return res.status(400).json({
-                message: 'Not enough stock available'
+                message: 'Selected size is not available'
             });
         }
 
-        //find and update cart
-        const cart = await cartSchema.findOne({ userId });
-        if (!cart) {
-            return res.status(404).json({
-                message: 'Cart not found'
-            });
-        }
-
-        const cartItem = cart.items.find(item => item.productId.toString() === productId);
-        if (!cartItem) {
-            return res.status(404).json({
-                message: 'Product not found in cart'
+        // Check if requested quantity is available for the specific size
+        if (sizeData.stock < quantity) {
+            return res.status(400).json({
+                message: `Only ${sizeData.stock} units available for size ${cartItem.size}`
             });
         }
 
         cartItem.quantity = quantity;
+        cartItem.subtotal = quantity * cartItem.price;
         await cart.save();
 
-
-
-        //Calculat new total
+        //Calculate new total
         const updatedCart = await cartSchema.findOne({ userId }).populate('items.productId');
         const cartItems = updatedCart.items.map(item => ({
             product: item.productId,
@@ -293,7 +330,7 @@ const updateQuantity = async (req, res) => {
             success: true,
             message: 'Quantity updated successfully',
             quantity: quantity,
-            subtotal: quantity * cartItem.price,
+            subtotal: cartItem.subtotal,
             total: total
         });
     } catch (error) {
