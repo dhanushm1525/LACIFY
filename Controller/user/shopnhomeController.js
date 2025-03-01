@@ -4,6 +4,8 @@ import Offer from '../../model/offerModel.js';
 
 const getHome = async (req, res) => {
     try {
+        console.log('haii');
+        
         // Get IDs of active categories
         const activeCategories = await Category.find({ isActive: true }).distinct('_id');
 
