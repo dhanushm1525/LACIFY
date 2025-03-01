@@ -68,6 +68,7 @@ router.post('/wishlist/add', userMiddlewares.checkSession, userMiddleware.errorH
 router.delete('/wishlist/remove/:productId', userMiddlewares.checkSession, userMiddleware.errorHandler, wishlistController.removeWishlist);
 
 router.get('/wallet', userMiddlewares.checkSession, walletController.getWallet);
+router.post('/checkout/wallet-payment', userMiddlewares.checkSession, userMiddleware.errorHandler,checkoutController.walletPayment);
 router.post('/orders/:orderId/items/:productId/return', userMiddlewares.checkSession, userMiddleware.errorHandler, orderController.requestReturnItem);
 
 router.post('/checkout/apply-coupon', userMiddlewares.checkSession, userMiddleware.errorHandler, checkoutController.applyCoupon);
