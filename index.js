@@ -50,11 +50,11 @@ app.use((req , res)=>{
 })
 // Serve static files from the 'static' directory
 app.use('/uploads', express.static('static/uploads'));
-app.use(express.static('static'));
+app.use(express.static('static')); 
 
 connectDb()
-
+ 
 //Start server
 app.listen(PORT,()=>{
     log.green('SERVER STATUS',`server runing on port : ${PORT}`)
-})
+})      
