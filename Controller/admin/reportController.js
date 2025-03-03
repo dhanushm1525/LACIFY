@@ -171,6 +171,7 @@ const downloadExcel = async (req, res, next) => {
 const downloadPDF = async (req, res, next) => {
     try {
         const { startDate, endDate } = req.query;
+        console.log(startDate, endDate)
         const startDay = new Date(startDate);
         const endDay = new Date(endDate);
 
