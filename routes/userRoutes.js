@@ -34,7 +34,7 @@ router.post('/forgot-password/send-otp', authController.sendForgotPasswordOTP);
 router.post('/forgot-password/verify-otp', authController.verifyForgotPasswordOTP);
 router.post('/forgot-password/reset-password', authController.resetPassword);
 router.get('/change-password', userMiddlewares.checkSession, authController.getChangePassword);
-router.post('/change-password', userMiddlewares.checkSession, authController.postChangePassword);
+router.patch('/change-password', userMiddlewares.checkSession, authController.postChangePassword);
 
 
 router.get('/auth/google', userMiddleware.isLogin, authController.getGoogle)
